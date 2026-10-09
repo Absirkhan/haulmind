@@ -2,178 +2,175 @@
   "scenario": {
     "name": "base",
     "seed": 42,
-    "fleet_size": 12,
-    "hours": 24,
+    "fleet_size": 25,
+    "hours": 48.0,
     "mix": null,
     "overrides": {}
   },
   "base": {
     "label": "multi-agent, RAG, memory (base)",
-    "run_id": "run-42-aefe21",
+    "run_id": "run-42-83f296",
     "provider": "stub",
-    "events_total": 2226,
-    "filtered_pct": 99.73,
-    "clusters_to_agent": 6,
-    "incidents": 5,
-    "alerts": 4,
-    "true_alerts": 3,
-    "false_alerts": 1,
-    "gt_positives": 4,
-    "gt_benign": 3,
-    "detected": 3,
-    "recall": 0.75,
-    "precision": 0.75,
-    "false_alert_rate": 0.25,
+    "events_total": 8727,
+    "filtered_pct": 99.83,
+    "clusters_to_agent": 15,
+    "incidents": 11,
+    "alerts": 10,
+    "true_alerts": 8,
+    "false_alerts": 2,
+    "gt_positives": 8,
+    "gt_benign": 6,
+    "detected": 8,
+    "recall": 1.0,
+    "precision": 0.8,
+    "false_alert_rate": 0.2,
     "action_correctness": 1.0,
     "policy_violations": 0,
-    "latency_p50_ms": 55.0,
-    "latency_p95_ms": 571.4,
-    "llm_requests_total": 18,
-    "llm_requests_per_incident": 3.6,
-    "tokens_per_incident": 2253.8,
-    "tokens_total": 11269,
-    "tool_calls": 20,
-    "wall_seconds": 9.3,
+    "latency_p50_ms": 48.0,
+    "latency_p95_ms": 482.5,
+    "llm_requests_total": 39,
+    "llm_requests_per_incident": 3.55,
+    "tokens_per_incident": 2367.2,
+    "tokens_total": 26039,
+    "tool_calls": 47,
+    "wall_seconds": 43.6,
     "per_type": {
       "failing_component": {
-        "total": 1,
-        "detected": 1,
-        "correct": 1
+        "total": 2,
+        "detected": 2,
+        "correct": 2
       },
       "harsh_driving_pattern": {
-        "total": 1,
-        "detected": 0,
-        "correct": 0
-      },
-      "fuel_fraud": {
         "total": 1,
         "detected": 1,
         "correct": 1
       },
       "hos_violation_risk": {
-        "total": 1,
-        "detected": 1,
-        "correct": 1
+        "total": 3,
+        "detected": 3,
+        "correct": 3
+      },
+      "fuel_fraud": {
+        "total": 2,
+        "detected": 2,
+        "correct": 2
       }
     },
-    "missed": [
-      "gt-002 harsh_driving_pattern V-02"
-    ],
+    "missed": [],
     "false_alert_ids": [
-      "INC-b12e875c hos_violation_risk V-09"
+      "INC-5d3de519 failing_component V-01",
+      "INC-43265a65 hos_violation_risk V-23"
     ]
   },
   "ablations": [
     {
       "label": "single agent (one LLM call), RAG, memory",
-      "run_id": "run-42-aefe21",
+      "run_id": "run-42-83f296",
       "provider": "stub",
-      "events_total": 2226,
-      "filtered_pct": 99.73,
-      "clusters_to_agent": 6,
-      "incidents": 5,
-      "alerts": 4,
-      "true_alerts": 3,
-      "false_alerts": 1,
-      "gt_positives": 4,
-      "gt_benign": 3,
-      "detected": 3,
-      "recall": 0.75,
-      "precision": 0.75,
-      "false_alert_rate": 0.25,
+      "events_total": 8727,
+      "filtered_pct": 99.83,
+      "clusters_to_agent": 15,
+      "incidents": 11,
+      "alerts": 10,
+      "true_alerts": 8,
+      "false_alerts": 2,
+      "gt_positives": 8,
+      "gt_benign": 6,
+      "detected": 8,
+      "recall": 1.0,
+      "precision": 0.8,
+      "false_alert_rate": 0.2,
       "action_correctness": 1.0,
       "policy_violations": 0,
-      "latency_p50_ms": 42.0,
-      "latency_p95_ms": 70.0,
-      "llm_requests_total": 5,
+      "latency_p50_ms": 51.0,
+      "latency_p95_ms": 125.5,
+      "llm_requests_total": 11,
       "llm_requests_per_incident": 1,
-      "tokens_per_incident": 667.0,
-      "tokens_total": 3335,
-      "tool_calls": 23,
-      "wall_seconds": 9.1,
+      "tokens_per_incident": 715.4,
+      "tokens_total": 7869,
+      "tool_calls": 63,
+      "wall_seconds": 42.2,
       "per_type": {
         "failing_component": {
-          "total": 1,
-          "detected": 1,
-          "correct": 1
+          "total": 2,
+          "detected": 2,
+          "correct": 2
         },
         "harsh_driving_pattern": {
-          "total": 1,
-          "detected": 0,
-          "correct": 0
-        },
-        "fuel_fraud": {
           "total": 1,
           "detected": 1,
           "correct": 1
         },
         "hos_violation_risk": {
-          "total": 1,
-          "detected": 1,
-          "correct": 1
+          "total": 3,
+          "detected": 3,
+          "correct": 3
+        },
+        "fuel_fraud": {
+          "total": 2,
+          "detected": 2,
+          "correct": 2
         }
       },
-      "missed": [
-        "gt-002 harsh_driving_pattern V-02"
-      ],
+      "missed": [],
       "false_alert_ids": [
-        "INC-db71b48d hos_violation_risk V-09"
+        "INC-7b59aa32 failing_component V-01",
+        "INC-4f792b06 hos_violation_risk V-23"
       ]
     },
     {
       "label": "multi-agent, no RAG, memory",
-      "run_id": "run-42-aefe21",
+      "run_id": "run-42-83f296",
       "provider": "stub",
-      "events_total": 2226,
-      "filtered_pct": 99.73,
-      "clusters_to_agent": 6,
-      "incidents": 5,
-      "alerts": 4,
-      "true_alerts": 3,
-      "false_alerts": 1,
-      "gt_positives": 4,
-      "gt_benign": 3,
-      "detected": 3,
-      "recall": 0.75,
-      "precision": 0.75,
-      "false_alert_rate": 0.25,
+      "events_total": 8727,
+      "filtered_pct": 99.83,
+      "clusters_to_agent": 15,
+      "incidents": 11,
+      "alerts": 10,
+      "true_alerts": 8,
+      "false_alerts": 2,
+      "gt_positives": 8,
+      "gt_benign": 6,
+      "detected": 8,
+      "recall": 1.0,
+      "precision": 0.8,
+      "false_alert_rate": 0.2,
       "action_correctness": 1.0,
       "policy_violations": 0,
-      "latency_p50_ms": 38.0,
-      "latency_p95_ms": 78.6,
-      "llm_requests_total": 18,
-      "llm_requests_per_incident": 3.6,
-      "tokens_per_incident": 2168.8,
-      "tokens_total": 10844,
-      "tool_calls": 19,
-      "wall_seconds": 7.9,
+      "latency_p50_ms": 52.0,
+      "latency_p95_ms": 219.5,
+      "llm_requests_total": 39,
+      "llm_requests_per_incident": 3.55,
+      "tokens_per_incident": 2249.6,
+      "tokens_total": 24746,
+      "tool_calls": 44,
+      "wall_seconds": 46.8,
       "per_type": {
         "failing_component": {
-          "total": 1,
-          "detected": 1,
-          "correct": 1
+          "total": 2,
+          "detected": 2,
+          "correct": 2
         },
         "harsh_driving_pattern": {
-          "total": 1,
-          "detected": 0,
-          "correct": 0
-        },
-        "fuel_fraud": {
           "total": 1,
           "detected": 1,
           "correct": 1
         },
         "hos_violation_risk": {
-          "total": 1,
-          "detected": 1,
-          "correct": 1
+          "total": 3,
+          "detected": 3,
+          "correct": 3
+        },
+        "fuel_fraud": {
+          "total": 2,
+          "detected": 2,
+          "correct": 2
         }
       },
-      "missed": [
-        "gt-002 harsh_driving_pattern V-02"
-      ],
+      "missed": [],
       "false_alert_ids": [
-        "INC-347cc5c8 hos_violation_risk V-09"
+        "INC-ccef63dc failing_component V-01",
+        "INC-b976cfcb hos_violation_risk V-23"
       ]
     }
   ],
@@ -184,7 +181,7 @@
     "scenario": {
       "name": "learning",
       "seed": 42,
-      "fleet_size": 12,
+      "fleet_size": 25,
       "hours": 72,
       "mix": {
         "hos_violation_risk": 3,
@@ -205,55 +202,55 @@
       {
         "phase": "day 1 (no decisions yet)",
         "memory": "on",
-        "alerts": 2,
-        "true": 1,
-        "false": 1,
+        "alerts": 4,
+        "true": 2,
+        "false": 2,
         "precision": 0.5,
         "recall": 1.0
       },
       {
         "phase": "day 2",
         "memory": "on",
-        "alerts": 6,
-        "true": 5,
-        "false": 1,
-        "precision": 0.833,
-        "recall": 1.0
+        "alerts": 3,
+        "true": 3,
+        "false": 0,
+        "precision": 1.0,
+        "recall": 0.75
       },
       {
         "phase": "day 3",
         "memory": "on",
-        "alerts": 3,
-        "true": 1,
-        "false": 2,
+        "alerts": 6,
+        "true": 2,
+        "false": 4,
         "precision": 0.333,
         "recall": 1.0
       },
       {
         "phase": "day 1 (no decisions yet)",
         "memory": "off",
-        "alerts": 2,
-        "true": 1,
-        "false": 1,
+        "alerts": 4,
+        "true": 2,
+        "false": 2,
         "precision": 0.5,
         "recall": 1.0
       },
       {
         "phase": "day 2",
         "memory": "off",
-        "alerts": 6,
-        "true": 5,
+        "alerts": 4,
+        "true": 3,
         "false": 1,
-        "precision": 0.833,
-        "recall": 1.0
+        "precision": 0.75,
+        "recall": 0.75
       },
       {
         "phase": "day 3",
         "memory": "off",
-        "alerts": 6,
-        "true": 1,
-        "false": 5,
-        "precision": 0.167,
+        "alerts": 8,
+        "true": 2,
+        "false": 6,
+        "precision": 0.25,
         "recall": 1.0
       }
     ],
