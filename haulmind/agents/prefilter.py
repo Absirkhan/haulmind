@@ -161,12 +161,18 @@ def _maintenance(c: Cluster, mem: dict[str, Any]) -> PrefilterResult:
     metrics = c.recent(EventType.ENGINE_METRICS, 8)
     active: dict[str, dict[str, Any]] = {}
     occurrences: dict[str, int] = {}
+    fresh_after = c.trigger.ts - timedelta(hours=8)
     for e in faults:
         p = e.payload_dict
         code = str(p["code"])
         if p.get("active", True):
-            active[code] = p
             occurrences[code] = occurrences.get(code, 0) + 1
+            # a code counts as active now only if it fired recently; stale codes still count
+            # towards recurrence but do not by themselves justify a new alert
+            if e.ts >= fresh_after:
+                active[code] = p
+            else:
+                active.pop(code, None)
         else:
             active.pop(code, None)
     nuisance = {str(x).upper() for x in mem.get("nuisance_codes", [])}
@@ -180,7 +186,7 @@ def _maintenance(c: Cluster, mem: dict[str, Any]) -> PrefilterResult:
     max_sev = max((SEV.get(str(p.get("severity", "low")), 0) for p in active.values()), default=-1)
     sev_name = {v: k for k, v in SEV.items()}.get(max_sev, "none")
     system = next((str(p.get("system", "")) for p in active.values() if p.get("system")), "")
-    recur = max(occurrences.values(), default=0)
+    recur = max((occurrences.get(code, 0) for code in active), default=0)
 
     on = [e.payload_dict for e in metrics if e.payload_dict.get("engine_on", True)]
     cool_delta = bat_delta = None

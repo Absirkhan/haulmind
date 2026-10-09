@@ -268,7 +268,7 @@ def test_codes_on_an_open_work_order_do_not_realert() -> None:
     events = [
         _ev(1, EventType.DTC_FAULT, high),
         _ev(2, EventType.DTC_FAULT, high, 60),
-        _ev(3, EventType.DTC_FAULT, noise, 600),
+        _ev(3, EventType.DTC_FAULT, noise, 300),
     ]
     untreated = prefilter(_cluster(Domain.MAINTENANCE, events))
     assert untreated.verdict == "ambiguous"
