@@ -29,6 +29,10 @@ REASON_BY_GT = {
         "Driver arrived with time to spare; do not alert at this margin.",
     ),
     "nuisance_dtc": ("known_intermittent", "Known intermittent code on this unit; temps normal."),
+    "noise_dtc_recurrence": (
+        "known_intermittent",
+        "Transient code with normal metrics; no repair needed.",
+    ),
     "reefer_fuel_lookalike": ("legit_fuel", "Reefer unit; combined fill is legitimate."),
 }
 

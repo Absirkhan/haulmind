@@ -170,6 +170,12 @@ def _maintenance(c: Cluster, mem: dict[str, Any]) -> PrefilterResult:
         else:
             active.pop(code, None)
     nuisance = {str(x).upper() for x in mem.get("nuisance_codes", [])}
+    ticketed = {str(x).upper() for x in c.context.get("ticketed_codes", [])}
+    if ticketed:  # already on an open work order: judge only what is new
+        for code in list(active):
+            if code.upper() in ticketed:
+                active.pop(code, None)
+                occurrences.pop(code, None)
     codes = sorted(active)
     max_sev = max((SEV.get(str(p.get("severity", "low")), 0) for p in active.values()), default=-1)
     sev_name = {v: k for k, v in SEV.items()}.get(max_sev, "none")
@@ -207,6 +213,7 @@ def _maintenance(c: Cluster, mem: dict[str, Any]) -> PrefilterResult:
             else ""
         ),
         "recurrences": recur,
+        "ticketed_codes": sorted(ticketed),
         "drift": drift,
         "coolant_temp_delta_f": cool_delta,
         "battery_v_delta": bat_delta,
@@ -214,9 +221,12 @@ def _maintenance(c: Cluster, mem: dict[str, Any]) -> PrefilterResult:
         "battery_v": latest.get("battery_v"),
     }
     if not codes and not drift:
-        return PrefilterResult(
-            "drop", c.domain, "", "low", signals, "no active codes, metrics normal"
+        reason = (
+            "codes already covered by an open work order"
+            if ticketed
+            else "no active codes, metrics normal"
         )
+        return PrefilterResult("drop", c.domain, "", "low", signals, reason)
     if codes and nuisance and set(x.upper() for x in codes) <= nuisance and not drift:
         return PrefilterResult(
             "drop", c.domain, "", "low", signals, "known nuisance code, metrics normal"

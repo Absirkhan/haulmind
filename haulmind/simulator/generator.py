@@ -225,6 +225,8 @@ class VehicleTimeline:
         self.harsh_count = 0
         self.harsh_pattern_days: set[int] = set()
         self.harsh_gt: GroundTruthIncident | None = None
+        self.noise_history: dict[str, datetime] = {}
+        self.noise_counter = 0
         for i in injections:
             if i.scenario == "harsh_driving_pattern":
                 self.harsh_pattern_days = {i.day, min(i.day + 1, cfg.days - 1)}
@@ -706,6 +708,27 @@ class VehicleTimeline:
         code = self.rng.choice(NOISE_DTC_CODES)
         at = self.cfg.start + timedelta(days=day, minutes=self.rng.randint(120, 420))
         clear = at + timedelta(minutes=self.rng.randint(60, 180))
+        # The same transient code twice in 48h on one truck looks like a pattern but is noise
+        # by construction; label it so evaluation and the learning loop can treat it as benign.
+        previous = self.noise_history.get(code)
+        if previous is not None and at - previous <= timedelta(hours=48):
+            self.noise_counter += 1
+            self.gt.append(
+                GroundTruthIncident(
+                    id=f"gt-noise-{self.v.id}-{self.noise_counter:02d}",
+                    type="noise_dtc_recurrence",
+                    domain=Domain.MAINTENANCE,
+                    vehicle_id=self.v.id,
+                    driver_id=self.d.id,
+                    start_ts=at,
+                    end_ts=clear + timedelta(hours=3),
+                    benign=True,
+                    expected_actions=[],
+                    notes=f"Transient {code} recurred by chance; no underlying failure",
+                    details={"code": code},
+                )
+            )
+        self.noise_history[code] = at
         return [(code, at, True), (code, clear, False)]
 
     def _plan_nuisance(self, day: int) -> list[tuple[datetime, bool]]:

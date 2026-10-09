@@ -248,3 +248,29 @@ def test_suppression_window_drops_everything() -> None:
         prefilter(c, {"suppress_until": (T0 - timedelta(hours=1)).isoformat()}).verdict
         == "definite"
     )
+
+
+def test_codes_on_an_open_work_order_do_not_realert() -> None:
+    high = {
+        "code": "P0562",
+        "description": "voltage low",
+        "system": "electrical",
+        "severity": "medium",
+        "active": True,
+    }
+    noise = {
+        "code": "P0401",
+        "description": "egr",
+        "system": "aftertreatment",
+        "severity": "low",
+        "active": True,
+    }
+    events = [
+        _ev(1, EventType.DTC_FAULT, high),
+        _ev(2, EventType.DTC_FAULT, high, 60),
+        _ev(3, EventType.DTC_FAULT, noise, 600),
+    ]
+    untreated = prefilter(_cluster(Domain.MAINTENANCE, events))
+    assert untreated.verdict == "ambiguous"
+    ticketed = prefilter(_cluster(Domain.MAINTENANCE, events, {"ticketed_codes": ["P0562"]}))
+    assert ticketed.verdict == "drop" and ticketed.signals["codes"] == ["P0401"]

@@ -24,6 +24,7 @@ TYPE_MATCH: dict[str, set[str]] = {
     "hos_near_miss": {"hos_violation_risk", "hos_break_risk"},
     "nuisance_dtc": {"failing_component", "recurring_fault"},
     "reefer_fuel_lookalike": {"fuel_fraud"},
+    "noise_dtc_recurrence": {"failing_component", "recurring_fault"},
 }
 # Actions in these states were proposed to (or executed for) the manager: they are "alerts".
 ALERT_STATUSES = {

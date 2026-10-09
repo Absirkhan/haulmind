@@ -17,7 +17,7 @@ from haulmind.agents.memory import load_memory
 from haulmind.agents.prefilter import Cluster, PrefilterResult, prefilter
 from haulmind.config import Settings, get_settings
 from haulmind.db.engine import session_scope
-from haulmind.db.models import EventRow, Incident, Vehicle
+from haulmind.db.models import EventRow, Incident, Vehicle, WorkOrder
 from haulmind.db.repo import bump_stat, get_checkpoint, set_checkpoint
 from haulmind.events.bus import EventBus
 from haulmind.events.schemas import EVENT_DOMAIN, Domain, Event, EventType
@@ -131,6 +131,9 @@ class Orchestrator:
         horizon = ev.ts - timedelta(hours=BUFFER_HOURS[domain])
         while buf and buf[0].ts < horizon:
             buf.popleft()
+        context = dict(self._context(ev.vehicle_id))
+        if domain == Domain.MAINTENANCE and ev.vehicle_id:
+            context["ticketed_codes"] = self._ticketed_codes(ev.vehicle_id)
         cluster = Cluster(
             key=key,
             domain=domain,
@@ -138,7 +141,7 @@ class Orchestrator:
             driver_id=ev.driver_id,
             events=list(buf),
             trigger=ev,
-            context=self._context(ev.vehicle_id),
+            context=context,
         )
         with session_scope() as s:
             memory = (
@@ -152,9 +155,12 @@ class Orchestrator:
             self._maybe_checkpoint()
             return
         last = self.last_incident.get(key)
-        if last is not None and ev.ts.replace(tzinfo=None) - last.replace(tzinfo=None) < timedelta(
-            hours=COOLDOWN_HOURS[domain]
-        ):
+        in_cooldown = last is not None and ev.ts.replace(tzinfo=None) - last.replace(
+            tzinfo=None
+        ) < timedelta(hours=COOLDOWN_HOURS[domain])
+        # Never open a second incident while one for this cluster is still waiting on a manager:
+        # the new evidence is attached to the open incident instead.
+        if in_cooldown or self._open_incident_id(key, ev.ts) is not None:
             self.stats.events_deduped += 1
             self._attach_event(key, ev)
             self._maybe_checkpoint()
@@ -263,6 +269,31 @@ class Orchestrator:
                 )
             self.vehicle_ctx[vehicle_id] = ctx
         return ctx
+
+    def _open_incident_id(self, key: str, ts: datetime) -> str | None:
+        """Incident for this cluster that still has work pending (open) within the last 48h."""
+        with session_scope() as s:
+            row = s.execute(
+                select(Incident.id)
+                .where(
+                    Incident.cluster_key == key,
+                    Incident.run_id == self.run_id,
+                    Incident.status.in_(("open", "investigating")),
+                    Incident.sim_ts >= to_naive_utc(ts) - timedelta(hours=48),
+                )
+                .order_by(Incident.opened_ts.desc())
+            ).first()
+        return row[0] if row else None
+
+    def _ticketed_codes(self, vehicle_id: str) -> list[str]:
+        """Fault codes already covered by an open or scheduled work order for this vehicle."""
+        with session_scope() as s:
+            rows = s.execute(
+                select(WorkOrder.fault_codes).where(
+                    WorkOrder.vehicle_id == vehicle_id, WorkOrder.status.in_(("open", "scheduled"))
+                )
+            ).all()
+        return sorted({str(c) for (codes,) in rows for c in (codes or [])})
 
     def _attach_event(self, key: str, ev: Event) -> None:
         with session_scope() as s:
