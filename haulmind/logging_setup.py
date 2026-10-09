@@ -12,7 +12,7 @@ _CONFIGURED = False
 
 def configure_logging(level: str = "INFO", json_output: bool = False) -> None:
     """Configure structlog + stdlib logging once per process."""
-    global _CONFIGURED  # noqa: PLW0603
+    global _CONFIGURED
     if _CONFIGURED:
         return
     _CONFIGURED = True

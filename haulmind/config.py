@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     llm_max_retries: int = Field(default=5, ge=0)
     llm_timeout_s: float = Field(default=60.0, gt=0)
     llm_temperature: float = Field(default=0.1, ge=0, le=2)
+    llm_thinking_budget: int | None = Field(
+        default=None,
+        description="Gemini thinking budget (0 disables thinking). None = provider default.",
+    )
 
     # --- MCP ---------------------------------------------------------------------------------
     mcp_host: str = "127.0.0.1"

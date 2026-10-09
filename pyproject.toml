@@ -45,13 +45,23 @@ packages = ["haulmind"]
 line-length = 100
 target-version = "py311"
 src = ["haulmind", "evals", "tests"]
+extend-exclude = ["haulmind/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "W", "SIM", "RUF", "ASYNC"]
-ignore = ["RUF012", "B008"]
+ignore = ["RUF012", "B008", "N818"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+# tool descriptions, prompt text and summary templates are prose; the formatter cannot wrap them
+"haulmind/mcp_server/server.py" = ["E501"]
+"haulmind/mcp_server/tools.py" = ["E501"]
+"haulmind/llm/stub.py" = ["E501"]
+"haulmind/agents/evidence.py" = ["E501"]
+"haulmind/agents/prompts.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"
