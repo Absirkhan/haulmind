@@ -65,7 +65,7 @@ class SimConfig(BaseModel):
     hours: float = Field(default=48.0, gt=0, le=24 * 14)
     label: str = ""
     mix: ScenarioMix | None = None
-    harsh_noise_p: float = 0.006  # per 5-minute ping
+    harsh_noise_p: float = 0.003  # per 5-minute ping: about one event per 25 driving hours
     speeding_noise_p: float = 0.004
     dtc_noise_daily_p: float = 0.25
 

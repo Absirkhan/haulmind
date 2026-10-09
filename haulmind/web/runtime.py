@@ -44,6 +44,7 @@ class AppRuntime:
         self.recent_incidents: list[dict[str, Any]] = []
         self._rate_window: list[float] = []
         self.error: str | None = None
+        self._owns_tools = False
 
     # --- lifecycle ---------------------------------------------------------------------------
 
@@ -51,6 +52,7 @@ class AppRuntime:
         get_engine()
         self.settings.ensure_dirs()
         self.tools = ToolClient(self.settings, caller="agent")
+        self._owns_tools = True
         await self.tools.connect(wait_s=60.0 if wait_for_mcp else 0.0)
         cfg = SimConfig(
             seed=self.settings.sim_seed,
@@ -117,7 +119,7 @@ class AppRuntime:
                     await t
         if self.orch is not None:
             self.orch.flush_stats()
-        if self.tools is not None:
+        if self.tools is not None and self._owns_tools:  # injected clients belong to their owner
             await self.tools.close()
 
     # --- controls ------------------------------------------------------------------------------

@@ -92,15 +92,20 @@ class StubLLMClient:
             recur = int(sig.get("recurrences", 0))
             if codes and set(codes) <= nuisance and not drift:
                 decision, reason = "dismiss", "known nuisance code with normal metrics"
-            elif sev in ("high", "critical") or drift or recur >= 2:
+            elif sev in ("high", "critical") or drift:
                 decision, severity = "act", "critical" if sev == "critical" else "high"
                 reason = (
                     "recurring/high-severity faults with metric drift"
                     if drift
                     else "high-severity fault codes"
                 )
+            elif sev == "medium" and recur >= 2:
+                decision, severity, reason = "act", "medium", "medium-severity code keeps returning"
+            elif recur >= 3:
+                decision, severity = "act", "low"
+                reason = "low-severity code recurred three times; schedule a look at next service"
             else:
-                decision, reason = "watch", "single low-severity code; monitoring"
+                decision, reason = "watch", "low-severity code without metric drift; monitoring"
         elif domain == "spend":
             itype = "fuel_fraud"
             flags = [k for k in ("overfill", "location_mismatch", "rapid_repeat") if sig.get(k)]

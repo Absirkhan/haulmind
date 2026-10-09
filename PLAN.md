@@ -259,3 +259,20 @@ docs/                     demo-script.md, screenshots
 data/                     SQLite DB, FAISS index, LLM cache, runs (gitignored)
 Makefile · Procfile · pyproject.toml · .env.example · README.md · PLAN.md
 ```
+
+## 8. Status (2026-10-09)
+
+| Milestone | State | Evidence |
+|---|---|---|
+| M1 simulator + schema + MCP server + HOS flow | done | `make run`, `make demo`; `tests/test_simulator.py`, `tests/test_mcp_tools.py` |
+| M2 maintenance + fuel flows | done | work-order flow with RAG citations and shop lookup; fuel flag flow with reefer dismissal; `tests/test_pipeline.py` |
+| M3 policy engine + tests | done | `tests/test_policy.py` (tiers, block list, rate limits, approval binding, replay), gateway tests over MCP |
+| M4 memory / learning loop | done | per-driver/vehicle thresholds, nuisance codes, suppression, fleet-wide HOS fallback; measured in `evals/results.md` |
+| M5 evals + ablations | done | `make eval`, `make eval-replay`; single vs multi agent, RAG on/off; planner-model ablation runs only with a Gemini key |
+| M6 trace viewer | done | `/traces`, `/traces/{id}`, per-incident span tree with latency and tokens |
+| M7 polish | done | README with results block, `docs/demo-script.md`, ruff + mypy clean, 40 tests |
+
+Known gaps: no Gemini key was available while building, so the shipped eval numbers come from
+the offline stub provider; the harsh-driving pattern is detected only when enough events spread
+across trips (the heuristic triage wants four); noise fault codes that recur on one truck within
+48 hours produce unlabeled alerts that count as false alerts.

@@ -5,7 +5,7 @@ system: safety
 ## What counts
 Telematics records harsh braking, harsh acceleration and harsh cornering when the
 accelerometer exceeds about 0.35 g. Isolated events are normal: traffic, animals, a
-cut-off. Fleet-wide, a driver averages roughly one harsh event per 12–15 driving hours.
+cut-off. Fleet-wide, a driver averages roughly one harsh event per 20–30 driving hours.
 
 ## The pattern that matters
 Four or more harsh events for one driver within 48 hours, spread across at least two

@@ -99,9 +99,10 @@ templates.env.filters["pct"] = lambda x: f"{float(x):.0%}"
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
-    rt = AppRuntime(settings)
+    ui_only = os.environ.get("HAULMIND_NO_RUNTIME") == "1"
+    rt = get_runtime() if ui_only else AppRuntime(settings)  # tests inject a runtime
     set_runtime(rt)
-    if os.environ.get("HAULMIND_NO_RUNTIME") != "1":
+    if not ui_only:
         await rt.start(wait_for_mcp=os.environ.get("HAULMIND_WAIT_FOR_MCP") == "1")
         log.info(
             "web ready",
