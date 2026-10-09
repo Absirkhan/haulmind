@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Haulmind
+data/
+*.db
+*.db-wal
+*.db-shm
+evals/_work/
