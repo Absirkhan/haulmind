@@ -1,2 +1,264 @@
-# haulmind
-Haulmind watches a simulated telematics event stream, investigates incidents on its own, and produces a short queue of investigated, ready-to-approve actions.
+# Haulmind
+
+Haulmind is an autonomous operations agent for fleet managers. It watches a telematics event
+stream (GPS, hours-of-service clocks, fault codes, engine metrics, fuel-card transactions),
+decides which clusters of events are worth attention, investigates them on its own through a
+set of typed fleet tools, and produces a short inbox of investigated actions. Low-risk steps
+run automatically, medium-risk steps wait for a one-click approval, and high-risk steps are
+recommendations only. Everything in this repository is synthetic: a seedable simulator
+generates the fleet, the events and labeled ground-truth incidents, so the agent can be
+scored, not just demonstrated.
+
+> Runs locally in a few minutes. No Docker, no external services, no paid APIs: Python 3.11,
+> `uv`, SQLite, and optionally a free Gemini API key from Google AI Studio. Without a key the
+> whole system (demo, tests, evals) runs on a deterministic offline stand-in for the model.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph WEB["web process (FastAPI, port 8000)"]
+        SIM[Seeded simulator] -->|events| BUS[(asyncio queue<br/>persisted to SQLite)]
+        BUS --> ORCH[Orchestrator<br/>cluster, prefilter rules,<br/>checkpoint]
+        ORCH --> GRAPH[LangGraph agent graph<br/>triage, investigate,<br/>plan, verify, dispatch]
+        GRAPH --> INBOX[Approval inbox<br/>HTMX + Jinja]
+        INBOX -->|approve / reject / edit| EXEC[Decision handler]
+        INBOX --> MEM[(agent memory)]
+        MEM --> ORCH
+        GRAPH --> TR[(traces and spans)]
+        GRAPH --> LLM[LLMClient<br/>rate limit, disk cache,<br/>daily quota guard]
+    end
+    subgraph MCPP["mcp process (port 8765)"]
+        GATE[Policy gateway<br/>tiers, rate limits,<br/>block list, approval binding]
+        TOOLS[15 typed fleet tools]
+        RAG[FAISS index over<br/>DTC and service docs]
+        GATE --> TOOLS --> RAG
+    end
+    GRAPH -->|MCP| GATE
+    EXEC -->|MCP + approval id| GATE
+    CD[Claude Desktop] -->|MCP stdio| GATE
+    LLM --> GEM[Gemini API]
+    TOOLS --> DB[(SQLite, WAL)]
+    ORCH --> DB
+```
+
+Two processes. The web process owns the in-process event queue, the simulator producer, the
+orchestrator consumer, the agent graph and the UI. The MCP server process owns the fleet tools
+and the policy gateway; agents reach it over streamable HTTP, and Claude Desktop can attach to
+the same server over stdio. Tests and evals connect the same `MCPServer` in-process so they
+are fast and need no network.
+
+## Quickstart
+
+Requirements: Python 3.11 or newer, [uv](https://docs.astral.sh/uv/), GNU make (optional,
+every target is a plain `uv run` command you can copy).
+
+```bash
+git clone <this repo> && cd haulmind
+cp .env.example .env            # optional: paste a free key from https://aistudio.google.com/apikey
+make setup                      # uv sync, alembic migrations, FAISS index
+make run                        # MCP server + web app (UI, event bus, simulator, agents)
+```
+
+Open <http://127.0.0.1:8000/inbox>. The default run streams 25 trucks for 48 simulated hours
+at two simulated minutes per real second; change the speed from the status bar.
+
+Other entry points:
+
+| Command | What it does |
+|---|---|
+| `make demo` | 8 trucks, 20 simulated hours, 10 sim-minutes per second, opens the inbox. See `docs/demo-script.md`. |
+| `make eval` | Full evaluation against ground truth, writes `evals/results.md` and refreshes the table below. |
+| `make eval-replay` | Same, but every model call must come from the disk cache (zero network calls). |
+| `make test`, `make lint`, `make typecheck` | pytest, ruff, mypy (strict). |
+| `make models` | Lists the Gemini models your key can reach and checks the configured names. |
+| `make sim` | Generates a seeded run and prints its ground truth without streaming. |
+| `make reset` | Deletes the SQLite database and run folders (keeps the LLM cache). |
+
+## What happens to an event
+
+1. The simulator pushes a typed event onto the bus; the bus persists it and projects it onto
+   the fleet-state tables (vehicle position, HOS clocks, fault codes, fuel transactions).
+2. The orchestrator groups events into clusters per driver or vehicle and domain, and runs
+   **rule prefilters**. More than 95% of events stop here, with no model involved.
+3. Candidates go to the LangGraph graph. Clear-cut clusters skip triage; ambiguous ones get one
+   compact **triage** call on the cheapest model.
+4. The domain **investigator** (safety, maintenance, compliance, spend) gathers evidence through
+   the MCP tools: scripted calls first, then one function-calling round in which the model may
+   request up to two more tools.
+5. The **planner** proposes zero to three actions as schema-validated JSON with reasoning,
+   evidence references and confidence. The **verifier** checks them against the evidence and
+   policy in code, then with one more model call.
+6. **Dispatch** executes tier-1 actions through the MCP gateway, queues tier-2 actions for
+   approval, records tier-3 actions as recommendations, and writes audit entries and a trace.
+
+## Autonomy tiers
+
+The tier of every tool lives in one table (`haulmind/policy/tiers.py`) and is enforced inside
+the MCP server's tool handlers, not in prompts. A prompt-injected or buggy agent hits exactly
+the same gate as Claude Desktop would.
+
+| Tier | Behaviour | Tools |
+|---|---|---|
+| 0 | Read-only | `get_vehicle_status`, `get_driver_hos`, `find_idle_vehicles`, `list_hos_risks`, `get_fault_history`, `search_fault_docs`, `find_nearby_shops`, `get_fuel_transactions`, `get_recent_events` |
+| 1 | Runs automatically, rate limited, block-listed | `message_driver`, `flag_fuel_transaction` |
+| 2 | Queued until a manager approves; the approval is bound to a hash of the exact arguments and is single-use | `create_work_order`, `propose_reassignment` |
+| 3 | Recommendation only, never executed by the system | `suspend_fuel_card`, `set_vehicle_out_of_service` |
+
+Hard rules that no approval can override: forbidden phrases and links in driver messages
+(HR/legal language, prompt-injection echoes), a 15,000 USD cap on work orders, id validation,
+and sliding-window rate limits per tool and per driver. `tests/test_policy.py` and
+`tests/test_mcp_tools.py` show an agent trying to escalate and failing every time.
+
+## Learning from manager decisions
+
+Approve, reject and edit decisions are stored per driver and per vehicle. Rejections carry a
+reason code, and the learning rules turn them into tuned thresholds: an HOS near-miss rejected
+with "driver manages the clock" lowers that driver's alert margin and, after repeated
+rejections across drivers, the fleet-wide default; a work order rejected as "known
+intermittent" adds the fault codes to that vehicle's nuisance list; a fuel flag rejected as
+legitimate marks combined tractor-and-reefer fills as expected. The prefilter and the prompts
+read this memory on every cluster, and the evaluation measures its effect.
+
+<!-- EVAL_RESULTS_START -->
+## Evaluation results
+
+Generated by `make eval` on 2026-10-09 16:46 (Windows, Python 3.11.0). LLM provider: **stub** (deterministic offline heuristics; set GEMINI_API_KEY to evaluate the real model). Cache mode: `live`.
+
+Base scenario: seed 42, 12 trucks, 24 simulated hours, 2226 events, 4 injected incidents and 3 benign look-alikes. Wall time 9s, 20 MCP tool calls.
+
+### Core metrics
+
+| Run | Detection recall | False-alert rate | Action correctness | Policy violations | Latency p50 / p95 | LLM requests / tokens per incident | Events filtered before any LLM |
+|---|---|---|---|---|---|---|---|
+| multi-agent, RAG, memory (base) | 75% (3/4) | 25% (1/4) | 100% | 0 | 55 / 571 ms | 3.6 / 2254 | 99.7% |
+
+Per scenario type (base run):
+
+| Type | Injected | Detected | Expected actions proposed |
+|---|---|---|---|
+| failing_component | 1 | 1 | 1 |
+| fuel_fraud | 1 | 1 | 1 |
+| harsh_driving_pattern | 1 | 0 | 0 |
+| hos_violation_risk | 1 | 1 | 1 |
+
+Missed: gt-002 harsh_driving_pattern V-02.
+
+False alerts: INC-b12e875c hos_violation_risk V-09.
+
+### Learning loop: precision before vs after manager decisions
+
+Scenario: 12 trucks, 72 simulated hours with extra benign look-alikes (5 HOS near misses, 2 nuisance-code trucks, 1 reefer unit). At the end of each simulated day a scripted manager reviews the inbox: approves actions on real incidents, rejects look-alikes with a reason code. With memory on, those decisions tune per-driver/per-vehicle thresholds before the next day streams; with memory off they are recorded but ignored.
+
+| Day | Memory | Alerts | True | False | Precision | Recall |
+|---|---|---|---|---|---|---|
+| day 1 (no decisions yet) | on | 2 | 1 | 1 | 50% | 100% |
+| day 2 | on | 6 | 5 | 1 | 83% | 100% |
+| day 3 | on | 3 | 1 | 2 | 33% | 100% |
+| day 1 (no decisions yet) | off | 2 | 1 | 1 | 50% | 100% |
+| day 2 | off | 6 | 5 | 1 | 83% | 100% |
+| day 3 | off | 6 | 1 | 5 | 17% | 100% |
+
+Manager decisions simulated per arm: 9.
+
+### Ablations
+
+| Run | Detection recall | False-alert rate | Action correctness | Policy violations | Latency p50 / p95 | LLM requests / tokens per incident | Events filtered before any LLM |
+|---|---|---|---|---|---|---|---|
+| multi-agent, RAG, memory (base) | 75% (3/4) | 25% (1/4) | 100% | 0 | 55 / 571 ms | 3.6 / 2254 | 99.7% |
+| single agent (one LLM call), RAG, memory | 75% (3/4) | 25% (1/4) | 100% | 0 | 42 / 70 ms | 1.0 / 667 | 99.7% |
+| multi-agent, no RAG, memory | 75% (3/4) | 25% (1/4) | 100% | 0 | 38 / 79 ms | 3.6 / 2169 | 99.7% |
+
+- Flash-Lite vs Flash planner ablation skipped: no GEMINI_API_KEY, both roles ran on the offline stub.
+
+Definitions: an *alert* is an incident with at least one action proposed to a manager or executed automatically; *false-alert rate* is the share of alerts that match no injected incident; *action correctness* is the share of detected incidents whose proposed actions include every expected action; *policy violations* counts tier-2/3 side effects without a bound approval (must be 0). Latency is wall time per incident trace. Tokens are prompt plus output per incident.
+
+<!-- EVAL_RESULTS_END -->
+
+## Design decisions and tradeoffs
+
+- **Rules before models.** Free-tier quotas (a handful of requests per minute, a few hundred a
+  day) make every model call a budget decision. Deterministic prefilters drop telemetry noise,
+  definite cases skip triage, scripted evidence gathering replaces most tool-calling rounds,
+  and prompts carry compact summaries instead of raw tool output.
+- **Policy in code, in the server.** Tiers, rate limits, the block list and approval binding
+  live in the MCP server's tool handlers. The agent's dispatch step consults the same table,
+  but even if it did not, the gateway would still refuse.
+- **Approvals bound to arguments.** An approval stores a hash of the canonical tool arguments
+  (defaults filled in). Editing an action re-binds it; replaying an approval fails; using it for
+  another tool fails.
+- **One LLM interface, three clients.** Gemini via `google-genai` with native function calling
+  and `response_json_schema`, a disk cache keyed by the full request, and an offline stub that
+  applies transparent heuristics to the same structured payloads. The stub makes the project
+  runnable and testable without a key; results produced by it are labeled as such.
+- **Hashed embeddings instead of a neural embedder.** The corpus is a few dozen fault-code and
+  service-guidance documents where codes and component names dominate. TF-IDF-weighted feature
+  hashing into 512 dimensions on a FAISS inner-product index retrieves them well, costs
+  nothing, and keeps memory use negligible. A Gemini embedding backend fits behind the same
+  interface.
+- **Simulated time everywhere.** Rate-limit windows, HOS clocks and "nearby" queries use the
+  simulated clock, so a 48-hour run can replay in a minute without breaking the policy.
+- **SQLite for everything.** Events, fleet state, incidents, actions, approvals, audit log,
+  memory and traces share one WAL-mode database file. Replay is a query by run id and sequence.
+- **Synchronous SQLAlchemy inside async code.** Transactions are tiny and local; the
+  simplicity was worth more than an async driver.
+
+## Gemini free-tier handling
+
+- Central async rate limiter per model (default 5 requests per minute), exponential backoff
+  with jitter on 429 or `RESOURCE_EXHAUSTED`, and a daily request budget per model persisted in
+  `data/quota.json`. When the daily budget is gone the orchestrator checkpoints the last
+  processed event and stops cleanly; the next start resumes from the checkpoint.
+- Disk cache keyed by hash of model, system prompt, messages, tool schemas and parameters.
+  `LLM_CACHE_MODE=replay` turns a cache miss into an error, which is how `make eval-replay`
+  proves zero network calls.
+- Model names are configuration (`LLM_MODEL_TRIAGE`, `LLM_MODEL_PLANNER`), defaulting to
+  `gemini-3.5-flash-lite` and `gemini-3.5-flash`; `make models` lists what your key can reach.
+- Cost is reported as tokens and requests per incident; the dollar cost on the free tier is 0.
+
+## Connect Claude Desktop to the MCP server
+
+Add this to Claude Desktop's `claude_desktop_config.json` (adjust the path), restart Claude
+Desktop, and ask it things like "Which drivers are close to running out of drive time?" or
+"Open a work order for V-01's cooling system":
+
+```json
+{
+  "mcpServers": {
+    "haulmind-fleet": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/path/to/haulmind", "python", "-m", "haulmind.mcp_server", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+Run `make run` (or `make sim`) first so the database holds a fleet. Claude can read anything,
+send rate-limited messages and flag transactions, but a work order it requests lands in the
+Haulmind inbox as "pending approval" and a request to ground a truck becomes a recommendation.
+The same gateway, the same audit log.
+
+## Limitations
+
+- The simulator is a caricature of real telematics: straight-line routes, idealized HOS
+  bookkeeping, a small catalogue of fault codes and service documents.
+- Without a Gemini key the agent's judgment comes from the offline stub's heuristics; the eval
+  table says which provider produced its numbers. Live-model numbers depend on the free tier's
+  limits on the day you run them.
+- One active run at a time; installing a new run resets fleet state and agent memory because
+  the synthetic ids are reused.
+- The agent graph writes its own outputs (incidents, proposed actions, traces) directly to the
+  database; only fleet data access goes through MCP. The trust boundary is the process, not
+  the agent.
+- No authentication on the web UI or the MCP server; both bind to localhost.
+
+## Repository layout
+
+```
+haulmind/            package: config, db, events, simulator, mcp_server, policy, rag, llm,
+                     agents, tracing, web, orchestrator, demo
+evals/               run_eval.py, metrics.py, manager_sim.py, results.md
+tests/               pytest suites (policy, MCP tools, prefilter, simulator, pipeline, llm/rag)
+docs/                demo-script.md
+PLAN.md              architecture, data model, milestones, assumptions
+```

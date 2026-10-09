@@ -57,6 +57,12 @@ def load_memory(
             out["nuisance_codes"] = list(val.get("codes", []))
         elif key == "reefer_fills_ok":
             out["reefer_fills_ok"] = bool(val.get("value"))
+    # fleet-wide fallbacks (a per-driver/vehicle value always wins)
+    for key, val in memory_all(s, "global", "").items():
+        if key.startswith("threshold:"):
+            out.setdefault(key.split(":", 1)[1], val.get("value"))
+        elif key.startswith(("fp_count:", "tp_count:")):
+            counts.setdefault(f"global:{key}", int(val.get("n", 0)))
     sup = memory_get(s, "cluster", cluster_key, "suppress_until")
     if sup:
         out["suppress_until"] = sup.get("until")
@@ -135,6 +141,14 @@ def apply_decision(
                 new = min(new, -5.0)
             memory_set(s, scope, scope_id, "threshold:margin_threshold", {"value": new})
             changes["margin_threshold"] = new
+            # repeated near-miss rejections across drivers tighten the fleet-wide default too
+            g = memory_get(s, "global", "", f"fp_count:{incident_type}") or {"n": 0}
+            g["n"] = int(g.get("n", 0)) + 1
+            memory_set(s, "global", "", f"fp_count:{incident_type}", g)
+            if g["n"] >= 2:
+                gval = 0.0 if g["n"] < 4 else -10.0
+                memory_set(s, "global", "", "threshold:margin_threshold", {"value": gval})
+                changes["global_margin_threshold"] = gval
         elif domain == Domain.MAINTENANCE:
             codes = [str(c).upper() for c in (action.args_json.get("fault_codes") or [])]
             if codes and (reason_code in ("known_intermittent", "not_an_issue") or fp >= 2):

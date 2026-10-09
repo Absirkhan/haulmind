@@ -1,0 +1,34 @@
+{% if st %}
+<div class="stream" role="status">
+  <div class="clock">{{ st.sim_now|ts("%a %H:%M") if st.sim_now else "--:--" }}<small>simulated fleet time{% if st.paused %}, paused{% elif st.finished %}, run complete{% endif %}</small></div>
+  <div>
+    <div class="meter" aria-label="Run progress"><span style="width: {{ st.progress_pct }}%"></span></div>
+    <div class="facts">
+      <span><b>{{ st.events_done }}</b> of {{ st.events_total }} events</span>
+      <span><b>{{ st.events_per_s }}</b> events/s</span>
+      <span><b>{{ st.filtered_pct }}%</b> handled by rules before any model call</span>
+      <span><b>{{ st.incidents }}</b> incidents opened</span>
+      {% if st.stopped %}<span class="pill status-blocked">stopped: {{ st.stop_reason[:60] }}</span>{% endif %}
+      {% if st.error %}<span class="pill status-failed">{{ st.error[:80] }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="controls">
+    {% if st.paused %}
+      <form hx-post="/sim/resume" hx-target="#stream"><button class="btn small">Resume stream</button></form>
+    {% elif not st.finished %}
+      <form hx-post="/sim/pause" hx-target="#stream"><button class="btn small">Pause stream</button></form>
+    {% endif %}
+    <form hx-post="/sim/speed" hx-target="#stream">
+      <label>Speed
+        <select name="speed" onchange="this.form.requestSubmit()">
+          {% for v, label in [(60, "1 min/s"), (120, "2 min/s"), (300, "5 min/s"), (600, "10 min/s"), (0, "as fast as possible")] %}
+            <option value="{{ v }}" {{ 'selected' if st.speed == v }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="stream"><div class="clock">--:--<small>runtime not started</small></div><div></div><div></div></div>
+{% endif %}

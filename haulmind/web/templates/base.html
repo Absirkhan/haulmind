@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Haulmind{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+<div class="frame">
+  <aside class="rail">
+    <div class="brand">Haulmind<small>fleet operations agent</small></div>
+    <nav class="nav" aria-label="Main">
+      <a href="/inbox" class="{{ 'active' if page == 'inbox' }}">Inbox {% if pending_count %}<span class="count">{{ pending_count }}</span>{% endif %}</a>
+      <a href="/incidents" class="{{ 'active' if page == 'incidents' }}">Incidents</a>
+      <a href="/fleet" class="{{ 'active' if page == 'fleet' }}">Fleet</a>
+      <a href="/traces" class="{{ 'active' if page == 'traces' }}">Traces</a>
+      <a href="/audit" class="{{ 'active' if page == 'audit' }}">Audit log</a>
+    </nav>
+    <div class="rail-foot">
+      <div>Run <span title="{{ run_id }}">{{ (run_id or 'none')[:16] }}</span></div>
+      <div>Model provider: {{ provider }}</div>
+      <div style="margin-top:.5rem">Synthetic fleet. Nothing here is real.</div>
+    </div>
+  </aside>
+  <main class="main">
+    <div id="stream" hx-get="/stream" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

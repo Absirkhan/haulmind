@@ -44,12 +44,18 @@ packages = ["haulmind"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["haulmind", "evals", "tests"]
+src = ["."]
 extend-exclude = ["haulmind/migrations/versions"]
+
+[tool.ruff.format]
+line-ending = "lf"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "W", "SIM", "RUF", "ASYNC"]
 ignore = ["RUF012", "B008", "N818"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["haulmind", "evals"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
@@ -62,6 +68,7 @@ max-line-length = 120
 "haulmind/llm/stub.py" = ["E501"]
 "haulmind/agents/evidence.py" = ["E501"]
 "haulmind/agents/prompts.py" = ["E501"]
+"evals/run_eval.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

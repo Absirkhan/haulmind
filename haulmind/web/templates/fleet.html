@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Fleet – Haulmind{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Fleet</h1><p>Live projection of the simulated telematics stream{% if run %} for run {{ run.label }}{% endif %}.</p></div></div>
+<table>
+  <thead><tr><th>Unit</th><th>Tractor</th><th>Driver</th><th>Drive left</th><th>Trip</th><th class="num">Speed</th><th class="num">Coolant</th><th class="num">Battery</th><th class="num">Fuel</th><th>Active codes</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for v in vehicles %}
+    {% set d = drivers.get(v.current_driver_id) %}{% set h = hos.get(v.current_driver_id) %}
+    <tr>
+      <td>{{ v.id }} <span style="color:var(--ink-3)">{{ v.unit_number }}</span></td>
+      <td>{{ v.year }} {{ v.make }} {{ v.model }}{% if v.has_reefer %} <span class="pill domain">reefer</span>{% endif %}</td>
+      <td>{{ d.name if d else '-' }} <span style="color:var(--ink-3)">{{ v.current_driver_id or '' }}</span></td>
+      <td>{% if h %}{{ h.drive_min_remaining }} min <span style="color:var(--ink-3)">{{ h.duty_status.replace('_', ' ') }}</span>{% else %}-{% endif %}</td>
+      <td>{{ v.current_trip_id or '-' }}</td>
+      <td class="num">{{ v.speed_mph|round|int if v.speed_mph is not none else '-' }}</td>
+      <td class="num" style="{{ 'color:var(--red);font-weight:600' if v.coolant_temp_f and v.coolant_temp_f > 218 }}">{{ v.coolant_temp_f if v.coolant_temp_f is not none else '-' }}</td>
+      <td class="num" style="{{ 'color:var(--red);font-weight:600' if v.battery_v and v.battery_v < 12.8 }}">{{ v.battery_v if v.battery_v is not none else '-' }}</td>
+      <td class="num">{{ v.fuel_level_pct|round|int if v.fuel_level_pct is not none else '-' }}%</td>
+      <td>{{ faults.get(v.id, [])|join(', ') or '-' }}</td>
+      <td>{{ v.status.replace('_', ' ') }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

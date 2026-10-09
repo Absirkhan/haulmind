@@ -4,7 +4,7 @@ policy gateway (``gated``) which decides execute / pending / recommend / block /
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -599,7 +599,7 @@ def gated(
     approval_id = args.get("approval_id")
     incident_id = args.get("incident_id")
     clean_args = canonical_args(tool_name, args)
-    exec_args = {**clean_args}
+    exec_args = {**clean_args, "_incident_id": incident_id}
     with session_scope() as s:
         now = sim_now(s)
         run = get_active_run(s)

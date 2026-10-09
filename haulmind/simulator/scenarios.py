@@ -70,20 +70,29 @@ class Injection:
 def plan_injections(
     fleet: Fleet, mix: ScenarioMix, days: int, rng: random.Random
 ) -> list[Injection]:
-    """Assign scenarios to distinct vehicles/days so incidents do not overlap on one truck."""
+    """Assign scenarios to vehicles and days.
+
+    A vehicle carries at most one injection per simulated day. Fresh vehicles are preferred;
+    when the fleet is smaller than the mix, vehicles are reused on days they are still free.
+    """
     vehicle_ids = [v.id for v in fleet.vehicles]
     rng.shuffle(vehicle_ids)
     reefer_ids = [v.id for v in fleet.vehicles if v.has_reefer]
     plain_ids = [vid for vid in vehicle_ids if vid not in reefer_ids]
-    pool = plain_ids[:]  # consume from here; the reefer truck is reserved for its lookalike
+    busy: dict[str, set[int]] = {}
     injections: list[Injection] = []
     counter = 0
 
-    def take() -> str | None:
-        nonlocal pool
-        if not pool:
-            return None
-        return pool.pop()
+    def take(needed: set[int]) -> str | None:
+        for vid in plain_ids:
+            if vid not in busy:
+                busy[vid] = set(needed)
+                return vid
+        for vid in plain_ids:
+            if not (busy[vid] & needed):
+                busy[vid] |= needed
+                return vid
+        return None
 
     def add(scenario: ScenarioType, vid: str, day: int, variant: str = "", **params: float) -> None:
         nonlocal counter
@@ -99,29 +108,31 @@ def plan_injections(
             )
         )
 
-    def day_pick() -> int:
-        return rng.randrange(days)
-
+    all_days = set(range(days))
+    for _ in range(mix.nuisance_dtc):  # recurs every day, so it needs a fully free vehicle
+        if (vid := take(all_days)) is not None:
+            add("nuisance_dtc", vid, 0)
+    for _ in range(mix.harsh_driving_pattern):  # spans two consecutive days
+        day = 0 if days == 1 else rng.randrange(days - 1)
+        if (vid := take({day, min(day + 1, days - 1)})) is not None:
+            add("harsh_driving_pattern", vid, day)
     for _ in range(mix.hos_violation_risk):
-        if (vid := take()) is not None:
-            add("hos_violation_risk", vid, day_pick(), total_drive_min=rng.randint(715, 745))
+        day = rng.randrange(days)
+        if (vid := take({day})) is not None:
+            add("hos_violation_risk", vid, day, total_drive_min=rng.randint(715, 745))
     for _ in range(mix.hos_near_miss):
-        if (vid := take()) is not None:
-            add("hos_near_miss", vid, day_pick(), total_drive_min=rng.randint(648, 657))
+        day = rng.randrange(days)
+        if (vid := take({day})) is not None:
+            add("hos_near_miss", vid, day, total_drive_min=rng.randint(648, 657))
     for i in range(mix.failing_component):
-        if (vid := take()) is not None:
-            variant = "cooling" if i % 2 == 0 else "electrical"
-            add("failing_component", vid, day_pick(), variant)
+        day = rng.randrange(days)
+        if (vid := take({day})) is not None:
+            add("failing_component", vid, day, "cooling" if i % 2 == 0 else "electrical")
     variants = ["overfill", "location", "rapid_repeat"]
     for i in range(mix.fuel_fraud):
-        if (vid := take()) is not None:
-            add("fuel_fraud", vid, day_pick(), variants[i % len(variants)])
-    for _ in range(mix.harsh_driving_pattern):
-        if (vid := take()) is not None:
-            add("harsh_driving_pattern", vid, 0 if days == 1 else rng.randrange(days - 1))
-    for _ in range(mix.nuisance_dtc):
-        if (vid := take()) is not None:
-            add("nuisance_dtc", vid, 0)  # recurs across every day of the run
+        day = rng.randrange(days)
+        if (vid := take({day})) is not None:
+            add("fuel_fraud", vid, day, variants[i % len(variants)])
     for i in range(min(mix.reefer_fuel_lookalike, len(reefer_ids))):
         add("reefer_fuel_lookalike", reefer_ids[i], 0)  # every fuel stop of this truck
     return injections

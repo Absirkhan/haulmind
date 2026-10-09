@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ inc.type }} – Haulmind{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ inc.type.replace('_', ' ')|capitalize }}</h1>
+    <p>{{ inc.summary }}</p>
+    <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <span class="pill sev-{{ inc.severity }}">{{ inc.severity }}</span>
+      <span class="pill domain">{{ inc.domain }}</span>
+      <span class="pill domain">{{ inc.status.replace('_', ' ') }}</span>
+      {% if vehicle %}<span class="pill domain">{{ vehicle.id }} unit {{ vehicle.unit_number }}</span>{% endif %}
+      {% if driver %}<span class="pill domain">{{ driver.id }} {{ driver.name }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="kv" style="min-width:320px">
+    <div><b>{{ inc.llm_requests }}</b><span>model calls</span></div>
+    <div><b>{{ inc.llm_input_tokens + inc.llm_output_tokens }}</b><span>tokens</span></div>
+    <div><b>{{ inc.latency_ms }}</b><span>ms end to end</span></div>
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card">
+      <h2>Timeline</h2>
+      <p style="color:var(--ink-3);font-size:.85rem">Fleet time, from the events that triggered the investigation to what the agent and you did about it.</p>
+      <ol class="timeline" style="margin-top:.75rem">
+        {% for e in events %}
+          <li class="{{ 'hot' if e.type in ('dtc_fault', 'fuel_transaction', 'harsh_event') or (e.type == 'hos_update' and e.payload_json.drive_min_remaining is defined and e.payload_json.drive_min_remaining <= 120) }}">
+            <span class="t">{{ e.ts|ts("%a %H:%M") }}</span>{{ e.type.replace('_', ' ') }}
+            <span style="color:var(--ink-2)">
+            {% if e.type == 'hos_update' %}{{ e.payload_json.duty_status }}, {{ e.payload_json.drive_min_remaining }} min drive left{% if e.payload_json.est_minutes_to_destination is not none %}, {{ e.payload_json.est_minutes_to_destination }} min to destination{% endif %}
+            {% elif e.type == 'dtc_fault' %}{{ e.payload_json.code }} {{ 'active' if e.payload_json.active else 'cleared' }} ({{ e.payload_json.severity }})
+            {% elif e.type == 'engine_metrics' %}coolant {{ e.payload_json.coolant_temp_f }} F, battery {{ e.payload_json.battery_v }} V
+            {% elif e.type == 'fuel_transaction' %}{{ e.payload_json.gallons }} gal at {{ e.payload_json.station }}
+            {% elif e.type == 'harsh_event' %}{{ e.payload_json.harsh_type.replace('_', ' ') }} {{ e.payload_json.g_force }} g
+            {% endif %}</span>
+          </li>
+        {% endfor %}
+        <li class="agent"><span class="t">{{ inc.sim_ts|ts("%a %H:%M") }}</span>Haulmind opened this incident ({{ inc.triage_json.source }} triage: {{ inc.triage_json.reason }})</li>
+        {% for a in acts %}
+          <li class="agent"><span class="t">{{ a.sim_ts|ts("%a %H:%M") }}</span>Proposed <a href="/inbox?tab={{ 'auto' if a.status == 'auto_executed' else ('recommended' if a.status == 'recommended' else ('pending' if a.status == 'pending' else 'decided')) }}&selected={{ a.id }}">{{ a.title }}</a> <span class="pill tier-{{ a.tier }}">{{ a.tier|tier_label }}</span> <span class="pill status-{{ a.status }}">{{ a.status|status_label }}</span></li>
+        {% endfor %}
+        {% for l in logs if l.actor in ('manager', 'policy-gateway') %}
+          <li class="manager"><span class="t">{{ l.ts|ts("%H:%M:%S") }} wall</span>{{ l.actor }}: {{ l.action.replace('action.', '').replace('_', ' ') }}{% if l.details_json.reason %} ({{ l.details_json.reason }}){% endif %}</li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <h2>Signals that passed the rules</h2>
+      <pre class="args" style="margin-top:.5rem">{{ inc.signals_json|fmt_args }}</pre>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <h2>Evidence</h2>
+      <ul class="evidence" style="margin-top:.5rem">
+        {% for e in inc.evidence_json %}<li><span class="eid">{{ e.id }}</span><span>{{ e.summary }}{% if e.requested_by == 'llm' %} <span class="pill domain">asked for by the model</span>{% endif %}</span></li>{% endfor %}
+      </ul>
+      {% if inc.triage_json.findings %}<div class="section"><h3>Investigator findings</h3><p>{{ inc.triage_json.findings }}</p></div>{% endif %}
+    </div>
+    {% if trace %}
+    <div class="card" style="margin-top:1rem">
+      <h2>Agent steps</h2>
+      <div class="spans" style="margin-top:.5rem">
+        {% for sp in spans %}
+          <div class="span kind-{{ sp.kind }} status-{{ sp.status }}">
+            <span class="name">{{ sp.name }}</span>
+            <span class="stats">{{ sp.kind.replace('_', ' ') }}{% if sp.model %}, {{ sp.model }}, {{ sp.input_tokens }}+{{ sp.output_tokens }} tok{% endif %}</span>
+            <span class="stats">{{ sp.latency_ms }} ms</span>
+          </div>
+        {% endfor %}
+      </div>
+      <p style="margin-top:.5rem;font-size:.85rem"><a href="/traces/{{ trace.id }}">Open full trace</a></p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

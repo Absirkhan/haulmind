@@ -5,6 +5,7 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
+
 from haulmind.config import get_settings
 from haulmind.db.engine import build_engine
 from haulmind.db.models import Base

@@ -4,6 +4,7 @@ MCP tool client used both by agents and by manager approvals."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from datetime import datetime
 from typing import Any
@@ -112,10 +113,8 @@ class AppRuntime:
         for t in (self.producer, self.consumer):
             if t is not None and not t.done():
                 t.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError, Exception):
                     await t
-                except (asyncio.CancelledError, Exception):
-                    pass
         if self.orch is not None:
             self.orch.flush_stats()
         if self.tools is not None:
@@ -132,19 +131,15 @@ class AppRuntime:
     async def restart_producer(self) -> None:
         if self.producer is not None and not self.producer.done():
             self.stop.set()
-            try:
+            with contextlib.suppress(Exception):
                 await self.producer
-            except Exception:
-                pass
         self.stop = asyncio.Event()
         self.bus = EventBus()
         assert self.orch is not None
         if self.consumer is not None and not self.consumer.done():
             self.consumer.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await self.consumer
-            except (asyncio.CancelledError, Exception):
-                pass
         self.consumer = asyncio.create_task(self.orch.consume(self.bus), name="orchestrator")
         start_seq = events_already_persisted(self.sim.run_id) + 1 if self.sim else 0
         self.producer = asyncio.create_task(self._produce(start_seq), name="simulator")

@@ -8,10 +8,14 @@ from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
 
 from haulmind.config import get_settings
 from haulmind.db.engine import session_scope
 from haulmind.db.models import (
+    AgentMemory,
+    Approval,
+    AuditLog,
     Driver,
     DriverMessage,
     EventRow,
@@ -25,7 +29,9 @@ from haulmind.db.models import (
     RunCheckpoint,
     RunStat,
     Shop,
+    Span,
     ToolCall,
+    Trace,
     Trip,
     Vehicle,
     WorkOrder,
@@ -43,11 +49,14 @@ def ground_truth_path(run_id: str) -> Path:
     return get_settings().runs_dir / run_id / "ground_truth.json"
 
 
-def install_run(sim: SimRun, *, replace: bool = True, persist_events: bool = False) -> None:
+def install_run(
+    sim: SimRun, *, replace: bool = True, persist_events: bool = False, reset_memory: bool = True
+) -> None:
     """Write the run row, fleet entities and ground truth. Resets projected fleet state.
 
     ``persist_events=True`` writes all events immediately (batch/replay use); otherwise the
-    streaming runner persists them one by one as they are published.
+    streaming runner persists them one by one as they are published. ``reset_memory`` clears
+    agent memory because a new run means a new synthetic fleet (ids are reused).
     """
     with session_scope() as s:
         existing = s.get(Run, sim.run_id)
@@ -71,6 +80,8 @@ def install_run(sim: SimRun, *, replace: bool = True, persist_events: bool = Fal
         s.execute(delete(Vehicle))
         s.execute(delete(Driver))
         s.execute(delete(Shop))
+        if reset_memory:
+            s.execute(delete(AgentMemory))
 
         s.add(
             Run(
@@ -155,10 +166,17 @@ def install_run(sim: SimRun, *, replace: bool = True, persist_events: bool = Fal
     )
 
 
-def _delete_run(s, run_id: str) -> None:  # type: ignore[no-untyped-def]
+def _delete_run(s: Session, run_id: str) -> None:
+    """Remove everything a previous installation of this run produced (FK-safe order)."""
+    action_ids = select(ProposedAction.id).where(ProposedAction.run_id == run_id)
+    s.execute(delete(Approval).where(Approval.action_id.in_(action_ids)))
     s.execute(delete(ProposedAction).where(ProposedAction.run_id == run_id))
     s.execute(delete(Incident).where(Incident.run_id == run_id))
     s.execute(delete(EventRow).where(EventRow.run_id == run_id))
+    trace_ids = select(Trace.id).where(Trace.run_id == run_id)
+    s.execute(delete(Span).where(Span.trace_id.in_(trace_ids)))
+    s.execute(delete(Trace).where(Trace.run_id == run_id))
+    s.execute(delete(AuditLog).where(AuditLog.run_id == run_id))
     s.execute(delete(RunStat).where(RunStat.run_id == run_id))
     s.execute(delete(RunCheckpoint).where(RunCheckpoint.run_id == run_id))
     s.execute(delete(Run).where(Run.id == run_id))

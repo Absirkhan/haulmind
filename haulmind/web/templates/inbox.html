@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Inbox – Haulmind{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Inbox</h1>
+    <p>Investigated actions, ready to decide. Low-risk steps already ran; recommendations wait for a person.</p>
+  </div>
+</div>
+<nav class="tabs" aria-label="Queues">
+  <a href="/inbox?tab=pending" class="{{ 'active' if tab == 'pending' }}">Needs approval ({{ counts.pending }})</a>
+  <a href="/inbox?tab=recommended" class="{{ 'active' if tab == 'recommended' }}">Recommendations ({{ counts.recommended }})</a>
+  <a href="/inbox?tab=auto" class="{{ 'active' if tab == 'auto' }}">Ran automatically ({{ counts.auto }})</a>
+  <a href="/inbox?tab=decided" class="{{ 'active' if tab == 'decided' }}">Decided ({{ counts.decided }})</a>
+</nav>
+<div class="split">
+  <div id="queue" hx-get="/inbox/queue?tab={{ tab }}{% if selected %}&selected={{ selected.a.id }}{% endif %}" hx-trigger="every 5s, queue-changed from:body" hx-swap="innerHTML">
+    {% include "_queue.html" %}
+  </div>
+  <div id="detail" class="detail">
+    {% if selected %}{% include "_action_detail.html" %}{% else %}<div class="empty">Select an item to see its evidence and reasoning.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

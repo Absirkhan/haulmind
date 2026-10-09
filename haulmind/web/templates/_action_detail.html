@@ -1,0 +1,77 @@
+{% set a = selected.a %}{% set inc = selected.inc %}
+<div class="card">
+  {% if notice %}<div class="notice {{ notice_kind or 'ok' }}" style="margin-bottom:.75rem">{{ notice }}
+    {% if memory_changes and memory_changes|length > 2 %}<div style="margin-top:.3rem;font-size:.85rem">Memory updated for {{ memory_changes.scope }} {{ memory_changes.scope_id }}:
+      {% for k, v in memory_changes.items() if k not in ('scope', 'scope_id') %}{{ k }} = {{ v }}{{ ", " if not loop.last }}{% endfor %}</div>{% endif %}
+  </div>{% endif %}
+  <h2>{{ a.title }}</h2>
+  <div class="meta">
+    <span class="pill tier-{{ a.tier }}">{{ a.tier|tier_label }}</span>
+    <span class="pill status-{{ a.status }}">{{ a.status|status_label }}</span>
+    {% if inc %}<span class="pill sev-{{ inc.severity }}">{{ inc.severity }}</span><span class="pill domain">{{ inc.domain }}</span>{% endif %}
+    <span>proposed {{ a.sim_ts|ts }} fleet time</span>
+    <span>confidence {{ a.confidence|pct }}<span class="conf"><span style="width: {{ (a.confidence * 100)|round }}%"></span></span></span>
+  </div>
+
+  {% if inc %}
+  <div class="section">
+    <h3>What happened</h3>
+    <p>{{ inc.summary }}</p>
+    <p style="font-size:.85rem;color:var(--ink-3)">Incident <a href="/incidents/{{ inc.id }}">{{ inc.id }}</a>{% if inc.trace_id %}, <a href="/traces/{{ inc.trace_id }}">agent trace</a>{% endif %}. Triage: {{ inc.triage_json.reason }} ({{ inc.triage_json.source }}).</p>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h3>Why the agent proposes this</h3>
+    <p>{{ a.reasoning }}</p>
+    {% if a.verifier_json %}<p style="font-size:.85rem;color:var(--ink-3)">Verifier: {{ a.verifier_json.reason }}</p>{% endif %}
+  </div>
+
+  <div class="section">
+    <h3>What will run: {{ a.tool_name|tool_label }}</h3>
+    <pre class="args">{{ a.args_json|fmt_args }}</pre>
+    {% if a.result_json %}<p style="font-size:.85rem;margin-top:.5rem">Result: {{ a.result_json|pretty }}</p>{% endif %}
+  </div>
+
+  <div class="section">
+    <h3>Evidence the agent gathered</h3>
+    <ul class="evidence">
+      {% for e in a.evidence_json %}
+        <li><span class="eid">{{ e.id }}</span><span>{{ e.summary }}</span></li>
+      {% else %}<li><span class="eid">-</span><span>No evidence recorded.</span></li>{% endfor %}
+    </ul>
+  </div>
+
+  {% if a.status in ('pending', 'recommended') %}
+  <div class="section">
+    <h3>Your decision</h3>
+    {% if a.status == 'pending' %}
+      <div class="decide">
+        <form hx-post="/actions/{{ a.id }}/approve" hx-target="#detail" hx-swap="innerHTML">
+          <button class="btn approve">Approve and run</button>
+        </form>
+        <button class="btn" hx-get="/actions/{{ a.id }}/edit" hx-target="#detail" hx-swap="innerHTML">Edit first</button>
+      </div>
+    {% else %}
+      <p style="font-size:.9rem;color:var(--ink-2)">High-risk actions are never executed by Haulmind. Handle it in your systems, then mark it done.</p>
+      <div class="decide">
+        <form hx-post="/actions/{{ a.id }}/acknowledge" hx-target="#detail" hx-swap="innerHTML">
+          <button class="btn primary">Mark as handled</button>
+        </form>
+      </div>
+    {% endif %}
+    <form class="decide" hx-post="/actions/{{ a.id }}/reject" hx-target="#detail" hx-swap="innerHTML" style="margin-top:.75rem">
+      <select name="reason_code" aria-label="Reason">
+        {% for code, label in reasons.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+      </select>
+      <input type="text" name="reason_text" placeholder="Optional note the agent will remember" style="min-width:16rem">
+      <button class="btn reject">Reject</button>
+    </form>
+  </div>
+  {% elif a.decided_by %}
+  <div class="section">
+    <h3>Decision</h3>
+    <p>{{ a.status|status_label }} by {{ a.decided_by }} at {{ a.decided_ts|ts("%H:%M:%S") }}{% if a.decision_reason %}: {{ a.decision_reason }}{% endif %}</p>
+  </div>
+  {% endif %}
+</div>

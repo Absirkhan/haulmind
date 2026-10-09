@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Incidents – Haulmind{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Incidents</h1><p>Everything the agent decided was worth investigating, with what it cost to investigate.</p></div>
+</div>
+{% if stats %}
+<div class="kv" style="margin-bottom:1.25rem">
+  <div><b>{{ stats.events_total|int }}</b><span>events seen</span></div>
+  <div><b>{{ stats.filtered_pct|round(1) }}%</b><span>filtered by rules before any model call</span></div>
+  <div><b>{{ (stats.clusters_definite + stats.clusters_ambiguous)|int }}</b><span>clusters reached the agent</span></div>
+  <div><b>{{ stats.incidents_opened|int }}</b><span>incidents opened</span></div>
+  <div><b>{{ stats.triage_dismissed|int }}</b><span>dismissed at triage</span></div>
+</div>
+{% endif %}
+<table>
+  <thead><tr><th>Fleet time</th><th>Type</th><th>Vehicle</th><th>Driver</th><th>Severity</th><th>Status</th><th class="num">Actions</th><th class="num">Model calls</th><th class="num">Tokens</th><th class="num">Latency</th></tr></thead>
+  <tbody>
+  {% for i in incs %}
+    <tr>
+      <td>{{ i.sim_ts|ts }}</td>
+      <td><a href="/incidents/{{ i.id }}">{{ i.type.replace('_', ' ') }}</a><br><span style="color:var(--ink-3);font-size:.8rem">{{ i.domain }}</span></td>
+      <td>{{ i.vehicle_id or '-' }}</td><td>{{ i.driver_id or '-' }}</td>
+      <td><span class="pill sev-{{ i.severity }}">{{ i.severity }}</span></td>
+      <td>{{ i.status.replace('_', ' ') }}</td>
+      <td class="num">{{ counts.get(i.id, 0) }}</td>
+      <td class="num">{{ i.llm_requests }}</td>
+      <td class="num">{{ i.llm_input_tokens + i.llm_output_tokens }}</td>
+      <td class="num">{{ i.latency_ms }} ms</td>
+    </tr>
+  {% else %}<tr><td colspan="10" class="empty">No incidents yet. The stream is still being filtered.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -410,6 +410,15 @@ class VehicleTimeline:
             remaining -= leg.minutes
             if remaining < 45:
                 break
+        # Ordinary days stay legal with margin: dispatch plans at most 10 h of driving.
+        overflow = sum(leg.minutes for leg in legs) - 600
+        if overflow > 0 and legs:
+            last = legs[-1]
+            if last.minutes - overflow >= 45:
+                last.minutes -= overflow
+                last.miles = round(last.minutes / 60 * AVG_SPEED_MPH, 1)
+            else:
+                legs.pop()
         return legs
 
     # --- day simulation ----------------------------------------------------------------------
@@ -728,8 +737,10 @@ class VehicleTimeline:
         if day not in self.harsh_pattern_days or not legs:
             return set()
         picks: set[tuple[int, int]] = set()
-        for _ in range(3):
-            li = self.rng.randrange(len(legs))
+        leg_indices = self.rng.sample(range(len(legs)), k=min(3, len(legs)))
+        while len(leg_indices) < 3:
+            leg_indices.append(self.rng.randrange(len(legs)))
+        for li in leg_indices:
             minutes = legs[li].minutes
             at = self.rng.randrange(1, max(2, minutes // PING_MIN)) * PING_MIN
             picks.add((min(at, minutes), li))
