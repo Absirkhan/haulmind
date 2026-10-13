@@ -8,9 +8,11 @@ from pathlib import Path
 
 import pytest
 
+from haulmind.agents.schemas import ActionProposal, PlanOutput, json_schema
 from haulmind.config import get_settings
 from haulmind.llm.base import CacheMiss, LLMRequest, Message, QuotaExhausted
 from haulmind.llm.cache import CachingClient, DiskCache
+from haulmind.llm.gemini import _quota_detail
 from haulmind.llm.quota import QuotaGuard
 from haulmind.llm.ratelimit import AsyncRateLimiter
 from haulmind.llm.stub import StubLLMClient
@@ -97,3 +99,31 @@ def test_rag_index_finds_the_right_doc() -> None:
     hits = idx.search("reefer tank combined fill fuel card", k=3)
     assert any("fuel-card" in h.chunk.doc for h in hits)
     assert all(h.citation.endswith(tuple("abcdefghijklmnopqrstuvwxyz0123456789-")) for h in hits)
+
+
+def test_json_schema_strips_titles_but_keeps_title_field() -> None:
+    """Gemini rejects a schema whose ``required`` names a property that is not defined.
+
+    ``ActionProposal.title`` is a real field; only the schema metadata ``title`` must go.
+    """
+    schema = json_schema(PlanOutput)
+    assert "title" not in schema
+    action = schema["$defs"]["ActionProposal"]
+    assert "title" not in action
+    assert "title" in action["properties"]
+    assert action["properties"]["title"]["type"] == "string"
+    assert set(action["required"]) <= set(action["properties"])
+    for sub in action["properties"].values():
+        assert "title" not in sub
+    assert "title" in json_schema(ActionProposal)["properties"]
+
+
+def test_quota_detail_keeps_the_informative_part_of_a_429() -> None:
+    body = """429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota.
+* Quota exceeded for metric: generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 2h34m42.224738582s.', 'details': [{'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'}]}}"""
+    detail = _quota_detail(body)
+    assert "limit: 20, model: gemini-3.6-flash" in detail
+    assert "quotaId=GenerateRequestsPerDayPerProjectPerModel-FreeTier" in detail
+    assert detail.endswith("retry in 2h34m42.224738582s")
+    assert _quota_detail("429 no structure here") == "429 no structure here"

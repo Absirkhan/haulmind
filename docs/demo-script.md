@@ -6,7 +6,7 @@ by the agent, investigated with fleet tools, and resolved with one click.
 ## Before recording
 
 ```bash
-cp .env.example .env        # add GEMINI_API_KEY for live Gemini; without it the offline stub runs
+cp .env.example .env        # add GEMINI_API_KEY or LLM_API_KEY for a live model; without one the offline stub runs
 make setup
 make demo                   # 8 trucks, 20 simulated hours at 10 sim-minutes per second
 ```
@@ -64,7 +64,8 @@ runs automatically is code, not a prompt, and the tests prove an agent cannot cr
 
 ## Variations
 
-- Live Gemini: set `GEMINI_API_KEY` and `make demo`; the trace page shows real model names and
+- Live model: set `GEMINI_API_KEY` (or `LLM_API_KEY` for Groq and other OpenAI-compatible
+  providers) and `make demo`; the trace page shows real model names and
   token counts. At 5 requests per minute the first incident takes about a minute longer.
 - Faster or slower clock: change the speed selector in the status bar at any time.
 - Claude Desktop: run `uv run python -m haulmind.mcp_server --transport stdio` from a Claude

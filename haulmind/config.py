@@ -13,7 +13,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-LLMProvider = Literal["auto", "gemini", "stub"]
+LLMProvider = Literal["auto", "gemini", "openai", "stub"]
 LLMCacheMode = Literal["live", "replay", "off"]
 MCPTransport = Literal["http", "inprocess"]
 AgentMode = Literal["multi", "single"]
@@ -37,15 +37,28 @@ class Settings(BaseSettings):
 
     # --- LLM ---------------------------------------------------------------------------------
     gemini_api_key: str | None = Field(default=None, description="Google AI Studio key.")
+    llm_api_key: str | None = Field(
+        default=None,
+        description="Key for an OpenAI-compatible provider (Groq, Mistral, OpenRouter, ...).",
+    )
+    llm_api_base: str = Field(
+        default="https://api.groq.com/openai/v1",
+        description="Base URL of an OpenAI-compatible chat-completions API.",
+    )
     llm_provider: LLMProvider = Field(
         default="auto",
-        description="'auto' uses Gemini when a key is present, otherwise the offline stub.",
+        description=(
+            "'auto' picks gemini when GEMINI_API_KEY is set, else openai when LLM_API_KEY is "
+            "set, else the offline stub."
+        ),
     )
     llm_model_triage: str = Field(
-        default="gemini-3.5-flash-lite", description="Cheapest model; used for triage."
+        default="gemini-3.5-flash-lite",
+        description="Cheapest model; used for triage. Must be a name the provider serves.",
     )
     llm_model_planner: str = Field(
-        default="gemini-3.5-flash", description="Stronger model; planning + verification."
+        default="gemini-3.5-flash",
+        description="Stronger model; planning + verification. Must match the provider.",
     )
     llm_rpm_triage: int = Field(default=5, ge=1, description="Requests per minute (triage).")
     llm_rpm_planner: int = Field(default=5, ge=1, description="Requests per minute (planner).")
@@ -60,6 +73,13 @@ class Settings(BaseSettings):
     llm_thinking_budget: int | None = Field(
         default=None,
         description="Gemini thinking budget (0 disables thinking). None = provider default.",
+    )
+    llm_reasoning_effort: str | None = Field(
+        default=None,
+        description=(
+            "reasoning_effort for OpenAI-compatible reasoning models (low|medium|high). "
+            "Unset: 'low' for gpt-oss models, omitted for everything else."
+        ),
     )
 
     # --- MCP ---------------------------------------------------------------------------------
@@ -134,9 +154,13 @@ class Settings(BaseSettings):
         return self.data_dir / "quota.json"
 
     @property
-    def effective_llm_provider(self) -> Literal["gemini", "stub"]:
+    def effective_llm_provider(self) -> Literal["gemini", "openai", "stub"]:
         if self.llm_provider == "auto":
-            return "gemini" if self.gemini_api_key else "stub"
+            if self.gemini_api_key:
+                return "gemini"
+            if self.llm_api_key:
+                return "openai"
+            return "stub"
         return self.llm_provider
 
     def ensure_dirs(self) -> None:

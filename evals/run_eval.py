@@ -28,7 +28,7 @@ from haulmind.config import Settings, get_settings, reset_settings_cache
 from haulmind.db.engine import get_engine
 from haulmind.events.bus import EventBus
 from haulmind.llm.base import CacheMiss, QuotaExhausted
-from haulmind.llm.factory import build_llm_client
+from haulmind.llm.factory import build_llm_client, verify_llm_models
 from haulmind.logging_setup import configure_logging, get_logger
 from haulmind.mcp_server.client import ToolClient
 from haulmind.mcp_server.server import build_server
@@ -86,6 +86,7 @@ async def replay(
     sim = generate(scn.config())
     install_run(sim)
     llm = build_llm_client(settings)
+    await verify_llm_models(llm)
     srv._server = build_server()
     extras: dict[str, Any] = {"run_id": sim.run_id, "gt": sim.ground_truth, "manager": []}
     t0 = time.time()
@@ -147,8 +148,8 @@ def render_markdown(results: dict[str, Any], settings: Settings, cache_mode: str
     scn: Scenario = results["scenario"]
     provider_note = (
         f" (triage `{settings.llm_model_triage}`, planner `{settings.llm_model_planner}`)"
-        if base.provider == "gemini"
-        else " (deterministic offline heuristics; set GEMINI_API_KEY to evaluate the real model)"
+        if base.provider != "stub"
+        else " (deterministic offline heuristics; set GEMINI_API_KEY or LLM_API_KEY to evaluate a real model)"
     )
     lines = [
         "## Evaluation results",
@@ -339,7 +340,7 @@ async def main_async(args: argparse.Namespace) -> int:
                 f"  recall={m.recall:.0%} false_alert_rate={m.false_alert_rate:.0%} correctness={m.action_correctness:.0%} "
                 f"violations={m.policy_violations} llm/incident={m.llm_requests_per_incident}"
             )
-        if settings.effective_llm_provider == "gemini":
+        if settings.effective_llm_provider != "stub":
             lite = _settings(settings, llm_model_planner=settings.llm_model_triage)
             print(
                 f"[ablation] planner = {lite.llm_model_planner} instead of {settings.llm_model_planner}"
@@ -351,7 +352,7 @@ async def main_async(args: argparse.Namespace) -> int:
             )
         else:
             notes.append(
-                "Flash-Lite vs Flash planner ablation skipped: no GEMINI_API_KEY, both roles ran on the offline stub."
+                "Cheap vs strong planner ablation skipped: no API key, both roles ran on the offline stub."
             )
         results["ablations"] = abl
         results["ablation_notes"] = notes

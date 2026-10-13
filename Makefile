@@ -6,7 +6,7 @@ setup:        ## Install deps, run migrations, build the FAISS index
 	uv sync
 	uv run alembic upgrade head
 	uv run python -m haulmind.rag.build_index
-	@echo "setup complete. Copy .env.example to .env and add GEMINI_API_KEY (optional)."
+	@echo "setup complete. Copy .env.example to .env and add GEMINI_API_KEY or LLM_API_KEY (optional)."
 
 run:          ## Start MCP server + web app (UI, event bus, simulator, agents)
 	uv run honcho start
@@ -26,7 +26,7 @@ web:          ## Run only the web process (connects to MCP over HTTP)
 index:        ## Rebuild the FAISS index for the DTC/service corpus
 	uv run python -m haulmind.rag.build_index --force
 
-models:       ## List Gemini models reachable with the configured key
+models:       ## List the models reachable with the configured key (Gemini or OpenAI-compatible)
 	uv run python -m haulmind.llm.list_models
 
 eval:         ## Full evaluation (uses LLM cache, calls the API on misses)

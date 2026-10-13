@@ -10,8 +10,9 @@ generates the fleet, the events and labeled ground-truth incidents, so the agent
 scored, not just demonstrated.
 
 > Runs locally in a few minutes. No Docker, no external services, no paid APIs: Python 3.11,
-> `uv`, SQLite, and optionally a free Gemini API key from Google AI Studio. Without a key the
-> whole system (demo, tests, evals) runs on a deterministic offline stand-in for the model.
+> `uv`, SQLite, and optionally one free API key: Gemini from Google AI Studio, or Groq (or any
+> other OpenAI-compatible service). Without a key the whole system (demo, tests, evals) runs
+> on a deterministic offline stand-in for the model.
 
 ## Architecture
 
@@ -37,7 +38,7 @@ flowchart LR
     GRAPH -->|MCP| GATE
     EXEC -->|MCP + approval id| GATE
     CD[Claude Desktop] -->|MCP stdio| GATE
-    LLM --> GEM[Gemini API]
+    LLM --> GEM[Gemini API or any<br/>OpenAI-compatible API]
     TOOLS --> DB[(SQLite, WAL)]
     ORCH --> DB
 ```
@@ -55,7 +56,7 @@ every target is a plain `uv run` command you can copy).
 
 ```bash
 git clone <this repo> && cd haulmind
-cp .env.example .env            # optional: paste a free key from https://aistudio.google.com/apikey
+cp .env.example .env            # optional: a free Gemini key (aistudio.google.com/apikey) or Groq key (console.groq.com)
 make setup                      # uv sync, alembic migrations, FAISS index
 make run                        # MCP server + web app (UI, event bus, simulator, agents)
 ```
@@ -71,7 +72,7 @@ Other entry points:
 | `make eval` | Full evaluation against ground truth, writes `evals/results.md` and refreshes the table below. |
 | `make eval-replay` | Same, but every model call must come from the disk cache (zero network calls). |
 | `make test`, `make lint`, `make typecheck` | pytest, ruff, mypy (strict). |
-| `make models` | Lists the Gemini models your key can reach and checks the configured names. |
+| `make models` | Lists the models your key can reach (Gemini or the OpenAI-compatible provider) and checks the configured names. |
 | `make sim` | Generates a seeded run and prints its ground truth without streaming. |
 | `make reset` | Deletes the SQLite database and run folders (keeps the LLM cache). |
 
@@ -211,10 +212,12 @@ Definitions: an *alert* is an incident with at least one action proposed to a ma
 - **Approvals bound to arguments.** An approval stores a hash of the canonical tool arguments
   (defaults filled in). Editing an action re-binds it; replaying an approval fails; using it for
   another tool fails.
-- **One LLM interface, three clients.** Gemini via `google-genai` with native function calling
-  and `response_json_schema`, a disk cache keyed by the full request, and an offline stub that
-  applies transparent heuristics to the same structured payloads. The stub makes the project
-  runnable and testable without a key; results produced by it are labeled as such.
+- **One LLM interface, four clients.** Gemini via `google-genai` with native function calling
+  and `response_json_schema`; any OpenAI-compatible endpoint (Groq, Mistral, OpenRouter, Ollama)
+  via plain `httpx` with the same tool-call and JSON-schema handling; a disk cache keyed by the
+  full request; and an offline stub that applies transparent heuristics to the same structured
+  payloads. The stub makes the project runnable and testable without a key; results produced
+  by it are labeled as such, and every trace and eval table names the provider.
 - **Hashed embeddings instead of a neural embedder.** The corpus is a few dozen fault-code and
   service-guidance documents where codes and component names dominate. TF-IDF-weighted feature
   hashing into 512 dimensions on a FAISS inner-product index retrieves them well, costs
@@ -227,7 +230,23 @@ Definitions: an *alert* is an incident with at least one action proposed to a ma
 - **Synchronous SQLAlchemy inside async code.** Transactions are tiny and local; the
   simplicity was worth more than an async driver.
 
-## Gemini free-tier handling
+## Model providers and free-tier handling
+
+Two live providers sit behind the same `LLMClient` interface, chosen by `LLM_PROVIDER`
+(`auto` picks Gemini when `GEMINI_API_KEY` is set, else the OpenAI-compatible provider when
+`LLM_API_KEY` is set, else the stub):
+
+- **Gemini** via `google-genai`. As of October 2026 the free tier allows only 20 requests per
+  day on the 3.x Flash models, which is less than one incident's worth of investigation;
+  `gemini-3.5-flash-lite` has a few hundred and is the practical free choice for both roles.
+- **Any OpenAI-compatible API** via `LLM_API_BASE` and `LLM_API_KEY`: Groq (free tier, no
+  card, about a thousand requests a day on `openai/gpt-oss-120b`), Mistral,
+  OpenRouter, Ollama for fully local models, and others. Set `LLM_MODEL_TRIAGE` and
+  `LLM_MODEL_PLANNER` to names the provider serves; `make models` lists them, and startup
+  fails fast if a configured name is not served. Providers that reject JSON-schema response
+  formats automatically fall back to JSON mode with the schema in the system prompt.
+
+The free-tier plumbing is shared by both:
 
 - Central async rate limiter per model (default 5 requests per minute), exponential backoff
   with jitter on 429 or `RESOURCE_EXHAUSTED`, and a daily request budget per model persisted in
@@ -266,7 +285,7 @@ The same gateway, the same audit log.
 
 - The simulator is a caricature of real telematics: straight-line routes, idealized HOS
   bookkeeping, a small catalogue of fault codes and service documents.
-- Without a Gemini key the agent's judgment comes from the offline stub's heuristics; the eval
+- Without an API key the agent's judgment comes from the offline stub's heuristics; the eval
   table says which provider produced its numbers. Live-model numbers depend on the free tier's
   limits on the day you run them.
 - One active run at a time; installing a new run resets fleet state and agent memory because

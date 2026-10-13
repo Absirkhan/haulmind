@@ -19,6 +19,9 @@ class ToolCallReq(BaseModel):
     id: str
     name: str
     args: dict[str, Any] = Field(default_factory=dict)
+    # Opaque provider state that must be echoed back with the call on the next turn (for
+    # example Gemini's thought signatures on its OpenAI-compatible endpoint). Never inspected.
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolResult(BaseModel):

@@ -4,7 +4,7 @@ schema-constrained JSON output, plus rate limiting, backoff and the daily quota 
 from __future__ import annotations
 
 import asyncio
-import json
+import base64
 import re
 import time
 from typing import Any
@@ -25,6 +25,7 @@ from haulmind.llm.base import (
     ToolSpec,
     Usage,
 )
+from haulmind.llm.parsing import extract_json
 from haulmind.llm.quota import QuotaGuard
 from haulmind.llm.ratelimit import AsyncRateLimiter, backoff_delay
 from haulmind.logging_setup import get_logger
@@ -33,6 +34,21 @@ log = get_logger(__name__)
 
 _RETRY_DELAY_RE = re.compile(r"retry(?:Delay|\s+in)\D*?(\d+(?:\.\d+)?)\s*s", re.IGNORECASE)
 _DAILY_RE = re.compile(r"per\s*day|daily|PerDay|RequestsPerDay", re.IGNORECASE)
+_QUOTA_LINE_RE = re.compile(r"Quota exceeded for metric:[^\n]*")
+_QUOTA_ID_RE = re.compile(r"'quotaId':\s*'([^']+)'")
+_RETRY_IN_RE = re.compile(r"retry in ([\w.]+?)\.?(?:\s|$|')", re.IGNORECASE)
+
+
+def _quota_detail(msg: str) -> str:
+    """Condense a 429 body to the parts that matter: metric + limit + model, quota ids, retry."""
+    parts = [m.group(0).strip() for m in _QUOTA_LINE_RE.finditer(msg)]
+    ids = sorted(set(_QUOTA_ID_RE.findall(msg)))
+    if ids:
+        parts.append("quotaId=" + ",".join(ids))
+    m = _RETRY_IN_RE.search(msg)
+    if m:
+        parts.append("retry in " + m.group(1))
+    return "; ".join(parts) if parts else msg[:200]
 
 
 def _strip_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -66,27 +82,14 @@ def _to_contents(messages: list[Message]) -> list[types.Content]:
         if m.text:
             parts.append(types.Part.from_text(text=m.text))
         for tc in m.tool_calls:
-            parts.append(types.Part(function_call=types.FunctionCall(name=tc.name, args=tc.args)))
+            part = types.Part(function_call=types.FunctionCall(name=tc.name, args=tc.args))
+            sig = tc.extra.get("thought_signature")
+            if isinstance(sig, str) and sig:
+                # Gemini 3.x requires the signature it returned with the call to be echoed back.
+                part.thought_signature = base64.b64decode(sig)
+            parts.append(part)
         contents.append(types.Content(role="user" if m.role == "user" else "model", parts=parts))
     return contents
-
-
-def _extract_json(text: str) -> Any:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.DOTALL)
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        start = min((i for i in (text.find("{"), text.find("[")) if i >= 0), default=-1)
-        if start < 0:
-            return None
-        for end in range(len(text), start, -1):
-            try:
-                return json.loads(text[start:end])
-            except json.JSONDecodeError:
-                continue
-    return None
 
 
 class GeminiClient:
@@ -184,11 +187,18 @@ class GeminiClient:
                 code = getattr(e, "code", None)
                 msg = str(e)
                 if code == 429 or "RESOURCE_EXHAUSTED" in msg:
+                    detail = _quota_detail(msg)
                     if _DAILY_RE.search(msg):
+                        log.warning(
+                            "gemini daily quota exhausted; pinning model for today",
+                            model=model,
+                            detail=detail,
+                            raw=msg[:1500],
+                        )
                         self.quota.mark_exhausted(model)
-                        raise QuotaExhausted(model, msg[:200]) from e
+                        raise QuotaExhausted(model, detail) from e
                     if attempt >= self.settings.llm_max_retries:
-                        raise LLMError(f"rate limited after {attempt} retries: {msg[:200]}") from e
+                        raise LLMError(f"rate limited after {attempt} retries: {detail}") from e
                     m = _RETRY_DELAY_RE.search(msg)
                     delay = backoff_delay(attempt, hint=float(m.group(1)) if m else None)
                     limiter.penalize(delay)
@@ -221,11 +231,15 @@ class GeminiClient:
         if cand is not None and cand.content is not None and cand.content.parts:
             for i, part in enumerate(cand.content.parts):
                 if part.function_call is not None and part.function_call.name:
+                    sig = part.thought_signature
                     calls.append(
                         ToolCallReq(
                             id=part.function_call.id or f"call_{i}",
                             name=part.function_call.name,
                             args=dict(part.function_call.args or {}),
+                            extra={"thought_signature": base64.b64encode(sig).decode()}
+                            if sig
+                            else {},
                         )
                     )
                 elif part.text and not part.thought:
@@ -240,7 +254,7 @@ class GeminiClient:
                 thought_tokens=int(um.thoughts_token_count or 0),
             )
         parsed = (
-            _extract_json(text)
+            extract_json(text)
             if (req.response_schema is not None or text.lstrip().startswith(("{", "[")))
             else None
         )

@@ -60,9 +60,20 @@ def json_schema(model: type[BaseModel]) -> dict[str, Any]:
     return schema
 
 
-def _strip_titles(obj: Any) -> Any:
+def _strip_titles(obj: Any, *, in_properties: bool = False) -> Any:
+    """Drop JSON-schema ``title`` metadata, but never a *property* that is named ``title``.
+
+    Inside a ``properties`` mapping the keys are field names, so ``title`` there is the
+    ``ActionProposal.title`` field; removing it leaves ``required`` pointing at a property the
+    schema no longer defines, which Gemini rejects with HTTP 400.
+    """
     if isinstance(obj, dict):
-        return {k: _strip_titles(v) for k, v in obj.items() if k != "title"}
+        out: dict[str, Any] = {}
+        for k, v in obj.items():
+            if k == "title" and not in_properties:
+                continue
+            out[k] = _strip_titles(v, in_properties=(k == "properties" and not in_properties))
+        return out
     if isinstance(obj, list):
         return [_strip_titles(x) for x in obj]
     return obj

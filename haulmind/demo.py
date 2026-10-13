@@ -60,7 +60,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"Provider: {s.effective_llm_provider}"
-        + ("" if s.gemini_api_key else " (set GEMINI_API_KEY in .env for live Gemini)")
+        + (
+            ""
+            if s.effective_llm_provider != "stub"
+            else " (set GEMINI_API_KEY or LLM_API_KEY in .env for a live model)"
+        )
     )
     print(f"Open {url}  (Ctrl+C to stop)")
     if not args.no_browser:

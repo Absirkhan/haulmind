@@ -17,7 +17,7 @@ from haulmind.db.models import Run
 from haulmind.db.repo import get_active_run
 from haulmind.events.bus import EventBus
 from haulmind.events.schemas import Event
-from haulmind.llm.factory import get_llm_client
+from haulmind.llm.factory import get_llm_client, verify_llm_models
 from haulmind.logging_setup import get_logger
 from haulmind.mcp_server.client import ToolClient
 from haulmind.orchestrator import Orchestrator
@@ -77,6 +77,7 @@ class AppRuntime:
             settings=self.settings,
             on_incident=self._on_incident,
         )
+        await verify_llm_models(self.orch.llm)
         if resume:
             # catch the orchestrator up on already-persisted events without re-running agents
             self.orch.last_seq = start_seq - 1
