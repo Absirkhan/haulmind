@@ -83,10 +83,30 @@ TOOL_DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 
+def _normalize(value: Any) -> Any:
+    """Make numerically equal values hash equally.
+
+    Arguments reach the gateway through JSON and the tool's schema, which turns a planner's
+    ``500`` into ``500.0`` for a ``float`` parameter. The approval was bound before that
+    coercion, so whole-valued floats are folded back to ints on both sides. Bools are left
+    alone (``True`` is not ``1`` here), and nested lists and dicts are normalised recursively.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [_normalize(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _normalize(v) for k, v in value.items()}
+    return value
+
+
 def canonical_args(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
-    """Arguments as the tool will actually see them: defaults filled, control keys dropped."""
+    """Arguments as the tool will actually see them: defaults filled, control keys dropped,
+    numbers normalised so transport coercion cannot break an approval's binding."""
     clean = {
-        k: v
+        k: _normalize(v)
         for k, v in args.items()
         if k not in ("approval_id", "incident_id", "caller")
         and not k.startswith("_")

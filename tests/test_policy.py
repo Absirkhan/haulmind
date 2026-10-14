@@ -156,6 +156,35 @@ def test_defaults_do_not_break_binding() -> None:
     )
 
 
+def test_transport_number_coercion_does_not_break_binding() -> None:
+    """Over HTTP the tool schema turns the planner's ``500`` into ``500.0``. Same hash.
+
+    Seen live: a work order approved at 500 was refused by the gateway, which hashed 500.0.
+    """
+    proposed = {
+        "vehicle_id": "V-07",
+        "description": "Cooling system overheat risk: 6-hour delta +17.6 F.",
+        "priority": "high",
+        "shop_id": "S-01",
+        "fault_codes": [],
+        "estimated_cost_usd": 500,
+    }
+    received = {
+        **proposed,
+        "estimated_cost_usd": 500.0,
+        "approval_id": "APR-x",
+        "incident_id": "INC-x",
+    }
+    assert args_hash("create_work_order", proposed) == args_hash("create_work_order", received)
+    # a genuinely different cost still breaks the binding
+    assert args_hash("create_work_order", proposed) != args_hash(
+        "create_work_order", {**proposed, "estimated_cost_usd": 500.5}
+    )
+    # nested values are normalised too; booleans are not treated as numbers
+    assert args_hash("t", {"a": [1.0, {"b": 2.0}]}) == args_hash("t", {"a": [1, {"b": 2}]})
+    assert args_hash("t", {"flag": True}) != args_hash("t", {"flag": 1})
+
+
 def test_tier3_is_never_executable_even_with_approval() -> None:
     eng = PolicyEngine()
     with session_scope() as s:
