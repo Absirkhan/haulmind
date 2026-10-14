@@ -1,22 +1,37 @@
-<div class="queue">
-{% for a in rows %}
-  <a class="action-row tier-{{ a.tier }} {{ 'selected' if selected and selected.a and selected.a.id == a.id }}"
-     href="/inbox?tab={{ tab }}&selected={{ a.id }}"
-     hx-get="/actions/{{ a.id }}" hx-target="#detail" hx-swap="innerHTML" hx-push-url="/inbox?tab={{ tab }}&selected={{ a.id }}">
-    <span class="bar"></span>
+{% from "_macros.html" import icon, sure, drivebar, when, empty %}
+<div class="queue" role="list" aria-label="Inbox items">
+{% for it in rows %}
+  <a class="item tier-{{ it.tier }}" role="listitem" data-id="{{ it.id }}" aria-selected="{{ 'true' if selected and selected.id == it.id else 'false' }}"
+     href="/inbox?tab={{ tab }}{{ qs }}&selected={{ it.id }}"
+     hx-get="/actions/{{ it.id }}" hx-target="#detail" hx-swap="innerHTML" hx-push-url="/inbox?tab={{ tab }}{{ qs }}&selected={{ it.id }}">
+    <span class="item-edge" aria-hidden="true"></span>
     <span>
-      <div class="title">{{ a.title }}</div>
-      <div class="sub">{{ a.tool_name|tool_label }} <span style="margin-left:.6rem">{{ a.vehicle_id or '' }} {{ a.driver_id or '' }}</span>
-        <span class="pill status-{{ a.status }}" style="margin-left:.6rem">{{ a.status|status_label }}</span></div>
+      <span class="item-when">{{ when(it.when, it.when_full) }}</span>
+      <div class="item-title">{{ it.headline }}</div>
+      <div class="item-step">{{ it.step }}</div>
+      <div class="item-meta">
+        {% if it.who %}<span class="who">{{ it.who }}</span>{% endif %}
+        {{ sure(it.sure, it.sure_level, it.sure_pct) }}
+        {% if it.drive %}{{ drivebar(it.drive) }}{% endif %}
+        {% if tab == 'decided' %}<span>{{ it.status_label }}</span>{% elif it.status in ('approved', 'blocked', 'failed', 'rate_limited', 'approval_invalid') %}<span>{{ it.status_label }}</span>{% endif %}
+      </div>
     </span>
-    <span class="when">{{ a.sim_ts|ts }}<br><span title="confidence {{ a.confidence|pct }}">{{ a.confidence|pct }} sure</span></span>
   </a>
 {% else %}
-  <div class="empty">
-    {% if tab == 'pending' %}Nothing waiting on you. The stream keeps running; new items appear here.
-    {% elif tab == 'auto' %}No automatic actions yet.
-    {% elif tab == 'recommended' %}No recommendations yet.
-    {% else %}No decisions yet.{% endif %}
-  </div>
+  {% if q or truck or driver or urgency %}
+    {{ empty("Nothing matches", "Try a different search, or clear the filters.", "search") }}
+  {% elif tab == 'pending' %}
+    {{ empty("All clear", "Nothing needs your OK right now. New items will show up here on their own.") }}
+  {% elif tab == 'recommended' %}
+    {{ empty("Nothing to decide", "Haulmind has no recommendations waiting for you.") }}
+  {% elif tab == 'auto' %}
+    {{ empty("Nothing handled yet", "Low-risk steps Haulmind takes on its own will be listed here.", "zap") }}
+  {% else %}
+    {{ empty("Nothing done yet", "Items you approve, dismiss, or mark as handled will be listed here.", "history") }}
+  {% endif %}
 {% endfor %}
+</div>
+<div class="queue-foot">
+  <span id="snooze-note" hidden><span id="snooze-count"></span> <a href="#" data-show-snoozed>Show them</a></span>
+  {% if paused %}<span>The feed is paused.</span>{% endif %}
 </div>

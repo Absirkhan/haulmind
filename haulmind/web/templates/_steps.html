@@ -1,0 +1,24 @@
+{% from "_macros.html" import icon %}
+{% set step_list = steps if steps is defined else a.steps %}
+{% if step_list %}
+<ol class="steps" style="margin-top:.5rem">
+  {% for st in step_list %}
+  <li class="step{% if st.model %} model{% endif %}{% if st.failed %} failed{% endif %}">
+    <span class="step-icon">{{ icon(st.icon) }}</span>
+    <div>
+      <div class="step-what">{{ st.what }}</div>
+      {% if st.found %}<div class="step-found">{{ st.found }}</div>{% endif %}
+      {% if st.technical %}
+      <details class="disclosure technical" style="margin-top:.35rem;border-top:0;padding-top:0">
+        <summary>{{ icon("chevron-right", "icon icon-chevron") }} Technical details</summary>
+        <dl><dt>Tool</dt><dd>{{ st.technical.tool }}</dd><dt>Arguments</dt><dd>{{ st.technical.args|pretty }}</dd></dl>
+        {% if st.technical.data %}<pre>{{ st.technical.data|pretty }}</pre>{% endif %}
+      </details>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="muted" style="margin-top:.5rem">Haulmind acted on the alerts directly without extra checks.</p>
+{% endif %}

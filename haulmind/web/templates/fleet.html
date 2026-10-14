@@ -1,26 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Fleet – Haulmind{% endblock %}
+{% from "_macros.html" import icon, badge, empty %}
+{% block title %}Trucks, Haulmind{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Fleet</h1><p>Live projection of the simulated telematics stream{% if run %} for run {{ run.label }}{% endif %}.</p></div></div>
-<table>
-  <thead><tr><th>Unit</th><th>Tractor</th><th>Driver</th><th>Drive left</th><th>Trip</th><th class="num">Speed</th><th class="num">Coolant</th><th class="num">Battery</th><th class="num">Fuel</th><th>Active codes</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for v in vehicles %}
-    {% set d = drivers.get(v.current_driver_id) %}{% set h = hos.get(v.current_driver_id) %}
-    <tr>
-      <td>{{ v.id }} <span style="color:var(--ink-3)">{{ v.unit_number }}</span></td>
-      <td>{{ v.year }} {{ v.make }} {{ v.model }}{% if v.has_reefer %} <span class="pill domain">reefer</span>{% endif %}</td>
-      <td>{{ d.name if d else '-' }} <span style="color:var(--ink-3)">{{ v.current_driver_id or '' }}</span></td>
-      <td>{% if h %}{{ h.drive_min_remaining }} min <span style="color:var(--ink-3)">{{ h.duty_status.replace('_', ' ') }}</span>{% else %}-{% endif %}</td>
-      <td>{{ v.current_trip_id or '-' }}</td>
-      <td class="num">{{ v.speed_mph|round|int if v.speed_mph is not none else '-' }}</td>
-      <td class="num" style="{{ 'color:var(--red);font-weight:600' if v.coolant_temp_f and v.coolant_temp_f > 218 }}">{{ v.coolant_temp_f if v.coolant_temp_f is not none else '-' }}</td>
-      <td class="num" style="{{ 'color:var(--red);font-weight:600' if v.battery_v and v.battery_v < 12.8 }}">{{ v.battery_v if v.battery_v is not none else '-' }}</td>
-      <td class="num">{{ v.fuel_level_pct|round|int if v.fuel_level_pct is not none else '-' }}%</td>
-      <td>{{ faults.get(v.id, [])|join(', ') or '-' }}</td>
-      <td>{{ v.status.replace('_', ' ') }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="page-head">
+  <div>
+    <h1>Trucks</h1>
+    <p class="lede">
+      {% if fleet.counts.attention %}{{ fleet.counts.attention }} truck{{ 's' if fleet.counts.attention != 1 }} need{{ '' if fleet.counts.attention != 1 else 's' }} attention.{% else %}No truck needs attention right now.{% endif %}
+      {{ fleet.counts.moving }} on the road, {{ fleet.counts.parked }} parked{% if fleet.counts.off %}, {{ fleet.counts.off }} off the road{% endif %}.
+    </p>
+  </div>
+</div>
+<div class="fleet">
+  <div class="table-wrap">
+    <table class="table" id="attention">
+      <thead><tr><th>Truck</th><th>Driver</th><th>Status</th><th>Drive time left</th><th>Fuel</th><th>Engine</th><th>Open items</th></tr></thead>
+      <tbody>
+      {% for r in fleet.rows %}
+        <tr id="truck-{{ r.unit }}">
+          <td><a class="row-link" href="/inbox?truck={{ r.id }}">Truck {{ r.unit }}</a><div class="sub">{{ r.detail }}</div></td>
+          <td>{% if r.driver_id %}<a class="row-link" href="/inbox?driver={{ r.driver_id }}">{{ r.driver }}</a>{% else %}<span class="quiet">{{ r.driver }}</span>{% endif %}{% if r.duty %}<div class="sub">{{ r.duty }}</div>{% endif %}</td>
+          <td><span class="truck-status {{ r.tone }}"><i aria-hidden="true"></i>{{ r.status }}</span>{% if r.speed %}<div class="sub">{{ r.speed }}</div>{% endif %}</td>
+          <td>{% if r.drive_left %}{{ r.drive_left }}<div class="drivebar" style="margin-top:.3rem" role="img" aria-label="{{ r.drive_left }} of the 11-hour limit left"><i style="width: {{ r.drive_pct }}%"></i></div>{% else %}<span class="quiet">Off duty</span>{% endif %}</td>
+          <td class="num">{{ r.fuel or '' }}</td>
+          <td>
+            {% if r.coolant %}<span {% if r.coolant_hot %}style="color:var(--stop);font-weight:600"{% endif %}>Coolant {{ r.coolant }}</span>{% endif %}
+            {% if r.battery %}<div class="sub" {% if r.battery_low %}style="color:var(--stop)"{% endif %}>Battery {{ r.battery }}</div>{% endif %}
+            {% for c in r.codes %}<div class="sub" style="color:var(--warn)">{{ c }}</div>{% endfor %}
+          </td>
+          <td>
+            {% for it in r.open_items %}<div><a href="/inbox?tab={{ it.tab }}&selected={{ it.id }}">{{ it.title }}</a></div>{% else %}<span class="quiet">None</span>{% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="map" aria-label="Where the trucks are">
+    <svg viewBox="0 0 {{ fleet.w }} {{ fleet.h }}" role="img" aria-label="Map of truck positions across Texas and neighbouring states">
+      {% for c in fleet.cities %}
+        <circle class="citydot" cx="{{ c.x }}" cy="{{ c.y }}" r="2"></circle>
+        {% if c.label %}<text class="city" x="{{ c.x + 4 }}" y="{{ c.y - 3 }}">{{ c.name }}</text>{% endif %}
+      {% endfor %}
+      {% for p in fleet.points %}
+        <a href="/fleet#truck-{{ p.label.split(' ')[1] }}"><circle class="dot {{ p.tone }}" cx="{{ p.x }}" cy="{{ p.y }}" r="4.5"><title>{{ p.label }}</title></circle></a>
+      {% endfor %}
+    </svg>
+    <div class="map-legend">
+      <span><i style="background:var(--ok)"></i>On the road</span>
+      <span><i style="background:var(--warn)"></i>Needs attention</span>
+      <span><i style="background:var(--ink-3)"></i>Parked</span>
+      <span><i style="background:var(--stop)"></i>Off the road</span>
+    </div>
+  </aside>
+</div>
 {% endblock %}

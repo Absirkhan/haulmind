@@ -1,77 +1,100 @@
-{% set a = selected.a %}{% set inc = selected.inc %}
-<div class="card">
-  {% if notice %}<div class="notice {{ notice_kind or 'ok' }}" style="margin-bottom:.75rem">{{ notice }}
-    {% if memory_changes and memory_changes|length > 2 %}<div style="margin-top:.3rem;font-size:.85rem">Memory updated for {{ memory_changes.scope }} {{ memory_changes.scope_id }}:
-      {% for k, v in memory_changes.items() if k not in ('scope', 'scope_id') %}{{ k }} = {{ v }}{{ ", " if not loop.last }}{% endfor %}</div>{% endif %}
-  </div>{% endif %}
-  <h2>{{ a.title }}</h2>
-  <div class="meta">
-    <span class="pill tier-{{ a.tier }}">{{ a.tier|tier_label }}</span>
-    <span class="pill status-{{ a.status }}">{{ a.status|status_label }}</span>
-    {% if inc %}<span class="pill sev-{{ inc.severity }}">{{ inc.severity }}</span><span class="pill domain">{{ inc.domain }}</span>{% endif %}
-    <span>proposed {{ a.sim_ts|ts }} fleet time</span>
-    <span>confidence {{ a.confidence|pct }}<span class="conf"><span style="width: {{ (a.confidence * 100)|round }}%"></span></span></span>
+{% from "_macros.html" import icon, badge, sure, drivebar, when %}
+{% set a = selected %}
+<a href="/inbox?tab={{ a.tab }}" class="btn btn-quiet btn-sm detail-back">{{ icon("arrow-left") }} Back to the list</a>
+<article class="detail-card" aria-labelledby="detail-title">
+  {% if notice %}
+  <div class="state-line {{ notice_kind or '' }}" role="status" style="margin-bottom:1rem">
+    {{ icon("circle-check" if notice_kind == 'ok' else ("triangle-alert" if notice_kind == 'stop' else "info")) }}
+    <span>{{ notice }}</span>
   </div>
-
-  {% if inc %}
-  <div class="section">
-    <h3>What happened</h3>
-    <p>{{ inc.summary }}</p>
-    <p style="font-size:.85rem;color:var(--ink-3)">Incident <a href="/incidents/{{ inc.id }}">{{ inc.id }}</a>{% if inc.trace_id %}, <a href="/traces/{{ inc.trace_id }}">agent trace</a>{% endif %}. Triage: {{ inc.triage_json.reason }} ({{ inc.triage_json.source }}).</p>
-  </div>
+  {% if memory_note %}<p class="memory-note">{{ memory_note }}</p>{% endif %}
   {% endif %}
 
-  <div class="section">
-    <h3>Why the agent proposes this</h3>
-    <p>{{ a.reasoning }}</p>
-    {% if a.verifier_json %}<p style="font-size:.85rem;color:var(--ink-3)">Verifier: {{ a.verifier_json.reason }}</p>{% endif %}
-  </div>
-
-  <div class="section">
-    <h3>What will run: {{ a.tool_name|tool_label }}</h3>
-    <pre class="args">{{ a.args_json|fmt_args }}</pre>
-    {% if a.result_json %}<p style="font-size:.85rem;margin-top:.5rem">Result: {{ a.result_json|pretty }}</p>{% endif %}
-  </div>
-
-  <div class="section">
-    <h3>Evidence the agent gathered</h3>
-    <ul class="evidence">
-      {% for e in a.evidence_json %}
-        <li><span class="eid">{{ e.id }}</span><span>{{ e.summary }}</span></li>
-      {% else %}<li><span class="eid">-</span><span>No evidence recorded.</span></li>{% endfor %}
-    </ul>
-  </div>
-
-  {% if a.status in ('pending', 'recommended') %}
-  <div class="section">
-    <h3>Your decision</h3>
-    {% if a.status == 'pending' %}
-      <div class="decide">
-        <form hx-post="/actions/{{ a.id }}/approve" hx-target="#detail" hx-swap="innerHTML">
-          <button class="btn approve">Approve and run</button>
-        </form>
-        <button class="btn" hx-get="/actions/{{ a.id }}/edit" hx-target="#detail" hx-swap="innerHTML">Edit first</button>
+  <div class="detail-head">
+    <div>
+      <h2 id="detail-title">{{ a.headline }}</h2>
+      <div class="who-line">
+        {% if a.who %}<span>{{ a.who }}</span>{% endif %}
+        {% if a.truck_detail %}<span class="sep" aria-hidden="true">·</span><span class="quiet">{{ a.truck_detail }}</span>{% endif %}
+        {% if a.phone %}<span class="sep" aria-hidden="true">·</span><a href="tel:{{ a.phone }}">{{ icon("phone") }} Call {{ a.driver_name.split()[0] }}</a>{% endif %}
       </div>
-    {% else %}
-      <p style="font-size:.9rem;color:var(--ink-2)">High-risk actions are never executed by Haulmind. Handle it in your systems, then mark it done.</p>
-      <div class="decide">
-        <form hx-post="/actions/{{ a.id }}/acknowledge" hx-target="#detail" hx-swap="innerHTML">
-          <button class="btn primary">Mark as handled</button>
-        </form>
-      </div>
+    </div>
+    {{ badge(a.tier_label, a.tier_tone, a.tier_help) }}
+  </div>
+
+  {% if a.why %}<p class="prose muted" style="margin-top:.75rem">{{ a.why }}</p>{% endif %}
+  <dl class="facts">
+    <div><dt>How sure Haulmind is</dt><dd>{{ sure(a.sure, a.sure_level, a.sure_pct) }}</dd></div>
+    <div><dt>Urgency</dt><dd>{{ a.severity_label }}</dd></div>
+    <div><dt>Noticed</dt><dd>{{ when(a.when, a.when_full) }}</dd></div>
+    {% if a.drive %}<div><dt>Drive time</dt><dd>{{ drivebar(a.drive) }}<div class="small muted" style="margin-top:.25rem">{{ a.drive.left_text }} left{% if a.drive.need_text %}, {{ a.drive.need_text }} still to drive{% endif %}</div></dd></div>{% endif %}
+  </dl>
+
+  <section class="section" aria-labelledby="step-title">
+    <h3 id="step-title">{% if a.open %}{% if a.tier == 3 %}What Haulmind recommends{% else %}What Haulmind will do{% endif %}{% elif a.status == 'auto_executed' %}What Haulmind did{% else %}What was proposed{% endif %}</h3>
+    <p style="font-weight:600;font-size:var(--t-l)">{{ a.step }}</p>
+    {% if a.reasoning %}<p class="prose muted" style="margin-top:.4rem">{{ a.reasoning }}</p>{% endif %}
+    {% if a.plan %}
+    <dl class="plan" style="margin-top:.75rem">
+      {% for k, v in a.plan %}<dt>{{ k }}</dt><dd{% if k == 'Message' %} class="msg"{% endif %}>{{ v }}</dd>{% endfor %}
+    </dl>
     {% endif %}
-    <form class="decide" hx-post="/actions/{{ a.id }}/reject" hx-target="#detail" hx-swap="innerHTML" style="margin-top:.75rem">
-      <select name="reason_code" aria-label="Reason">
-        {% for code, label in reasons.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
-      </select>
-      <input type="text" name="reason_text" placeholder="Optional note the agent will remember" style="min-width:16rem">
-      <button class="btn reject">Reject</button>
-    </form>
-  </div>
-  {% elif a.decided_by %}
-  <div class="section">
-    <h3>Decision</h3>
-    <p>{{ a.status|status_label }} by {{ a.decided_by }} at {{ a.decided_ts|ts("%H:%M:%S") }}{% if a.decision_reason %}: {{ a.decision_reason }}{% endif %}</p>
-  </div>
+    {% if a.verifier %}<p class="small quiet" style="margin-top:.6rem">Double-check: {{ a.verifier }}</p>{% endif %}
+  </section>
+
+  {% if a.open %}
+  <section class="section" aria-label="Your decision">
+    <div id="decision-state" hidden></div>
+    <div class="decide">
+      {% if a.tier == 2 %}
+        <button class="btn btn-primary" type="button" data-decide="{{ a.id }}" data-kind="approve" data-url="/actions/{{ a.id }}/approve" data-doing="{{ a.doing }}" data-toast="Approved. {{ a.doing }}">{{ icon("check") }} {{ a.button }} <span class="kbd">a</span></button>
+        {% if a.editable %}<button class="btn" type="button" hx-get="/actions/{{ a.id }}/edit" hx-target="#detail" hx-swap="innerHTML">Change details first</button>{% endif %}
+      {% else %}
+        <button class="btn btn-primary" type="button" data-decide="{{ a.id }}" data-kind="handled" data-url="/actions/{{ a.id }}/acknowledge" data-doing="Marking as handled" data-toast="Marked as handled">{{ icon("check") }} {{ a.button }} <span class="kbd">a</span></button>
+      {% endif %}
+      <button class="btn" type="button" data-not-now="{{ a.id }}">Not now <span class="kbd">n</span></button>
+      <button class="btn btn-quiet" type="button" data-dismiss-open aria-controls="dismiss-menu">Dismiss <span class="kbd">d</span></button>
+    </div>
+    {% if a.tier == 3 %}<p class="small muted" style="margin-top:.6rem">Haulmind never does this on its own. If you take care of it in your own systems, mark it handled so it learns.</p>{% endif %}
+    <div id="dismiss-menu" class="dismiss-menu" hidden>
+      <div class="small muted">Why? Haulmind remembers this for next time.</div>
+      <div class="choices">
+        {% for code, text in reasons %}
+        <label class="choice"><input type="radio" name="reason_code" value="{{ code }}" {{ 'checked' if loop.first }}> {{ text }}</label>
+        {% endfor %}
+      </div>
+      <input class="input" type="text" name="reason_text" placeholder="Anything else Haulmind should remember (optional)">
+      <div><button class="btn btn-primary btn-sm" type="button" data-decide="{{ a.id }}" data-kind="dismiss" data-url="/actions/{{ a.id }}/reject" data-doing="Dismissing" data-toast="Dismissed">Dismiss this item</button></div>
+    </div>
+  </section>
+  {% else %}
+  <section class="section" aria-label="What happened to this item">
+    <div class="state-line {{ a.status_tone if a.status_tone != 'neutral' else '' }}">{{ icon("circle-check" if a.status_tone == 'ok' else ("circle-x" if a.status_tone == 'stop' else "info")) }}<span>{{ a.decided_sentence }}</span></div>
+    {% if a.result and a.status not in ('executed', 'auto_executed') %}<p class="small muted" style="margin-top:.5rem">{{ a.result }}</p>{% endif %}
+  </section>
   {% endif %}
-</div>
+
+  <section class="section" aria-labelledby="checked-title">
+    <details class="disclosure" open style="border-top:0;padding-top:0;margin-top:0">
+      <summary id="checked-title">{{ icon("chevron-right", "icon icon-chevron") }} What Haulmind checked <span class="quiet">({{ a.steps|length }} steps)</span></summary>
+      {% include "_steps.html" %}
+    </details>
+  </section>
+
+  <details class="disclosure technical">
+    <summary>{{ icon("chevron-right", "icon icon-chevron") }} Technical details</summary>
+    <dl>
+      <dt>Item</dt><dd>{{ a.technical.action_id }}</dd>
+      {% if a.technical.incident_id %}<dt>Incident</dt><dd><a href="/incidents/{{ a.technical.incident_id }}">{{ a.technical.incident_id }}</a> ({{ a.technical.incident_type }})</dd>{% endif %}
+      {% if a.technical.trace_id %}<dt>Trace</dt><dd><a href="/traces/{{ a.technical.trace_id }}">{{ a.technical.trace_id }}</a></dd>{% endif %}
+      <dt>Tool</dt><dd>{{ a.technical.tool }} (tier {{ a.technical.tier }}, status {{ a.technical.status }})</dd>
+      <dt>Confidence</dt><dd>{{ a.technical.confidence }}</dd>
+      <dt>Proposed by</dt><dd>{{ a.technical.proposed_by }}</dd>
+      {% if a.technical.models %}<dt>Models</dt><dd>{{ a.technical.models }}, {{ a.technical.llm_requests }} calls, {{ a.technical.tokens }} tokens, {{ a.technical.latency_ms }} ms</dd>{% endif %}
+      {% if a.technical.decision_reason %}<dt>Decision</dt><dd>{{ a.technical.decision_reason }}</dd>{% endif %}
+    </dl>
+    <pre>{{ a.technical.args }}</pre>
+    {% if a.technical.result %}<pre>{{ a.technical.result }}</pre>{% endif %}
+    {% if a.technical.signals %}<pre>{{ a.technical.signals }}</pre>{% endif %}
+  </details>
+</article>

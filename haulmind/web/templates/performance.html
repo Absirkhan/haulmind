@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty %}
+{% block title %}How well Haulmind is catching problems{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>How well Haulmind is catching problems</h1>
+    <p class="lede">
+      {% if perf %}
+      Measured on a practice day where we know exactly which problems were planted: {{ perf.scenario }}.
+      {% if perf.practice %}This run used Haulmind's offline practice mode rather than a live model, so treat the numbers as a rehearsal.{% else %}Judgment calls were made by {{ perf.provider }}.{% endif %}
+      {% if perf.generated %}Last measured {{ perf.generated }}.{% endif %}
+      {% else %}
+      Haulmind has not been measured yet. Run the evaluation from the command line and this page fills in.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+{% if perf %}
+<section aria-labelledby="scores-title">
+  <h2 id="scores-title" class="visually-hidden">Headline results</h2>
+  <div class="scores">
+    {% for sc in perf.scores %}
+    <div class="score {{ sc.tone }}"><div class="v">{{ sc.value }}</div><div class="l">{{ sc.label }}</div><div class="h">{{ sc.help }}</div></div>
+    {% endfor %}
+    {% for sc in perf.timing %}
+    <div class="score {{ sc.tone }}"><div class="v{% if not sc.value[:1].isdigit() %} text{% endif %}">{{ sc.value }}</div><div class="l">{{ sc.label }}</div><div class="h">{{ sc.help }}</div></div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="inbox" style="margin-top:2rem">
+  <section class="card" aria-labelledby="bykind-title">
+    <h2 id="bykind-title" style="font-size:var(--t-l)">Real problems caught, by kind</h2>
+    <p class="muted small" style="margin:.25rem 0 1rem">How many of the planted problems of each kind Haulmind found.</p>
+    <div class="bars" role="img" aria-label="Problems caught by kind">
+      {% for row in perf.per_type %}
+      <div class="bar-row">
+        <span>{{ row.label }}</span>
+        <span class="track" title="{{ row.detected }} of {{ row.total }} caught"><i class="{{ 'good' if row.detected == row.total else '' }}" style="width: {{ row.pct }}%"></i></span>
+        <span class="num">{{ row.detected }} of {{ row.total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% if perf.missed %}<p class="chart-note">Missed: {{ perf.missed|length }}.</p>{% else %}<p class="chart-note">Nothing was missed on this run. {{ perf.false_alerts }} alert{{ 's' if perf.false_alerts != 1 }} turned out to be look-alikes.</p>{% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="learn-title">
+    <h2 id="learn-title" style="font-size:var(--t-l)">Does it learn from your decisions?</h2>
+    <p class="muted small" style="margin:.25rem 0 1rem">Over three practice days a manager dismissed the look-alikes each evening. With learning on, Haulmind raised fewer false alarms the next day.</p>
+    {% set on = perf.learning|selectattr('on')|list %}
+    {% set off = perf.learning|rejectattr('on')|list %}
+    {% if on and off %}
+    <div class="bars" role="img" aria-label="False alarms avoided per day thanks to learning">
+      {% for i in range(on|length) %}
+      {% set saved = (off[i].false - on[i].false) if i < off|length else 0 %}
+      <div class="bar-row">
+        <span>{{ on[i].phase.split(' (')[0]|capitalize }}</span>
+        <span class="track" title="{{ off[i].false if i < off|length else '?' }} false alarms without learning, {{ on[i].false }} with it"><i style="width: {{ (saved * 25) if saved > 0 else 0 }}%"></i></span>
+        <span class="num">{{ saved if saved > 0 else 0 }} avoided</span>
+      </div>
+      {% endfor %}
+    </div>
+    <table class="table" style="margin-top:1rem;font-size:var(--t-s)">
+      <thead><tr><th>Day</th><th>Learning</th><th class="num">Alerts</th><th class="num">Real</th><th class="num">False</th><th class="num">Alerts that were real</th></tr></thead>
+      <tbody>
+      {% for r in perf.learning %}
+      <tr><td>{{ r.phase|capitalize }}</td><td>{{ r.memory }}</td><td class="num">{{ r.alerts }}</td><td class="num">{{ r.true }}</td><td class="num">{{ r.false }}</td><td class="num">{{ r.precision }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">The learning test has not been run yet.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card" style="margin-top:1rem" aria-labelledby="cost-title">
+  <h2 id="cost-title" style="font-size:var(--t-l)">How much work it takes</h2>
+  <p class="prose muted" style="margin-top:.25rem">
+    {% if perf.filtered_pct is not none %}{{ "%.1f"|format(perf.filtered_pct) }}% of the readings coming off the trucks were handled by simple rules and never needed the model.{% endif %}
+    {% if perf.checks_per_problem %} Each problem that did reach the model took about {{ "%.1f"|format(perf.checks_per_problem) }} consultations to investigate, plan and double-check.{% endif %}
+  </p>
+</section>
+{% else %}
+{{ empty("Not measured yet", "Run the evaluation and come back. The results will show up here in plain language.", "chart-column") }}
+{% endif %}
+
+<section class="card" style="margin-top:1rem" aria-labelledby="today-title">
+  <h2 id="today-title" style="font-size:var(--t-l)">Today so far</h2>
+  <p class="prose muted" style="margin-top:.25rem">
+    {% if live.events %}Haulmind has read {{ "{:,}".format(live.events) }} readings{% if live.filtered_pct is not none %}, handled {{ "%.1f"|format(live.filtered_pct) }}% of them with simple rules{% endif %}, found {{ live.incidents }} problem{{ 's' if live.incidents != 1 }} worth your time{% if live.dismissed %}, and set aside {{ live.dismissed }} that turned out to be nothing{% endif %}.{% else %}Nothing has come in yet today.{% endif %}
+  </p>
+</section>
+{% endblock %}

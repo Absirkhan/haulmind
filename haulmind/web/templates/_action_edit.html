@@ -1,23 +1,26 @@
-{% set a = selected.a %}
-<div class="card">
-  <h2>Edit before approving</h2>
-  <p style="color:var(--ink-2);font-size:.9rem">Changing an argument re-binds the approval to the new values. Lists are comma separated.</p>
-  <form hx-post="/actions/{{ a.id }}/edit" hx-target="#detail" hx-swap="innerHTML">
-    {% for k, v in a.args_json.items() %}
-      <div style="margin:.5rem 0">
-        <label style="display:block;font-size:.85rem;color:var(--ink-2)">{{ k.replace('_', ' ') }}</label>
-        {% if k in ('body', 'description', 'reason') %}
-          <textarea name="arg_{{ k }}">{{ v or '' }}</textarea>
-        {% elif v is iterable and v is not string %}
-          <input type="text" name="arg_{{ k }}" value="{{ v|join(', ') }}" style="width:100%">
-        {% else %}
-          <input type="text" name="arg_{{ k }}" value="{{ v if v is not none else '' }}" style="width:100%">
-        {% endif %}
-      </div>
+{% from "_macros.html" import icon %}
+{% set e = edit %}
+<article class="detail-card" aria-labelledby="edit-title">
+  <h2 id="edit-title">Change the details</h2>
+  <p class="muted" style="margin-top:.35rem">{{ e.title }}. Your changes are what Haulmind will carry out once you approve.</p>
+  <form hx-post="/actions/{{ e.id }}/edit" hx-target="#detail" hx-swap="innerHTML">
+    {% for f in e.fields %}
+    <div class="field">
+      <label for="arg_{{ f.key }}">{{ f.label }}</label>
+      {% if f.kind == 'select' %}
+        <select class="input" id="arg_{{ f.key }}" name="arg_{{ f.key }}">
+          {% for value, text in f.options %}<option value="{{ value }}" {{ 'selected' if value == f.value }}>{{ text }}</option>{% endfor %}
+        </select>
+      {% elif f.kind == 'textarea' %}
+        <textarea class="input" id="arg_{{ f.key }}" name="arg_{{ f.key }}">{{ f.value }}</textarea>
+      {% else %}
+        <input class="input" type="text" id="arg_{{ f.key }}" name="arg_{{ f.key }}" value="{{ f.value }}">
+      {% endif %}
+    </div>
     {% endfor %}
     <div class="decide">
-      <button class="btn primary">Save changes</button>
-      <button class="btn" type="button" hx-get="/actions/{{ a.id }}" hx-target="#detail" hx-swap="innerHTML">Cancel</button>
+      <button class="btn btn-primary" type="submit">{{ icon("check") }} Save changes</button>
+      <button class="btn btn-quiet" type="button" hx-get="/actions/{{ e.id }}" hx-target="#detail" hx-swap="innerHTML">Cancel</button>
     </div>
   </form>
-</div>
+</article>

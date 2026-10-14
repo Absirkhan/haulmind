@@ -1,34 +1,15 @@
 {% if st %}
-<div class="stream" role="status">
-  <div class="clock">{{ st.sim_now|ts("%a %H:%M") if st.sim_now else "--:--" }}<small>simulated fleet time{% if st.paused %}, paused{% elif st.finished %}, run complete{% endif %}</small></div>
+{% set state = 'paused' if st.paused else ('done' if st.finished else ('lost' if st.stopped else 'live')) %}
+<div class="clock" data-run-state="{{ state }}" title="{{ st.sim_now|fulltime }}. {{ st.events_done }} of {{ st.events_total }} readings processed.">
+  <span class="live" id="live" data-state="{{ state }}"><span class="live-dot" aria-hidden="true"></span><span id="live-text">{% if st.paused %}Paused{% elif st.finished %}Day complete{% elif st.stopped %}Stopped{% else %}Live{% endif %}</span></span>
   <div>
-    <div class="meter" aria-label="Run progress"><span style="width: {{ st.progress_pct }}%"></span></div>
-    <div class="facts">
-      <span><b>{{ st.events_done }}</b> of {{ st.events_total }} events</span>
-      <span><b>{{ st.events_per_s }}</b> events/s</span>
-      <span><b>{{ st.filtered_pct }}%</b> handled by rules before any model call</span>
-      <span><b>{{ st.incidents }}</b> incidents opened</span>
-      {% if st.stopped %}<span class="pill status-blocked">stopped: {{ st.stop_reason[:60] }}</span>{% endif %}
-      {% if st.error %}<span class="pill status-failed">{{ st.error[:80] }}</span>{% endif %}
-    </div>
+    <div class="clock-time" aria-label="Fleet time {{ st.sim_now|clock }}">{{ st.sim_now|clock }}<small>{{ st.sim_now|dayname }} fleet time</small></div>
   </div>
-  <div class="controls">
-    {% if st.paused %}
-      <form hx-post="/sim/resume" hx-target="#stream"><button class="btn small">Resume stream</button></form>
-    {% elif not st.finished %}
-      <form hx-post="/sim/pause" hx-target="#stream"><button class="btn small">Pause stream</button></form>
-    {% endif %}
-    <form hx-post="/sim/speed" hx-target="#stream">
-      <label>Speed
-        <select name="speed" onchange="this.form.requestSubmit()">
-          {% for v, label in [(60, "1 min/s"), (120, "2 min/s"), (300, "5 min/s"), (600, "10 min/s"), (0, "as fast as possible")] %}
-            <option value="{{ v }}" {{ 'selected' if st.speed == v }}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    </form>
+  <div aria-hidden="true">
+    <div class="daystrip" title="Progress through the fleet day"><i style="width: {{ st.sim_now|daypct }}%"></i><b style="left: {{ st.sim_now|daypct }}%"></b></div>
+    <div class="daystrip-labels"><span>12am</span><span>6</span><span>noon</span><span>6</span><span>12</span></div>
   </div>
 </div>
 {% else %}
-<div class="stream"><div class="clock">--:--<small>runtime not started</small></div><div></div><div></div></div>
+<div class="clock" data-run-state="lost"><span class="live" id="live" data-state="lost"><span class="live-dot" aria-hidden="true"></span><span id="live-text">Not connected</span></span></div>
 {% endif %}

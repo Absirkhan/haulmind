@@ -1,24 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Inbox – Haulmind{% endblock %}
+{% from "_macros.html" import icon %}
+{% block title %}Inbox, Haulmind{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>Inbox</h1>
-    <p>Investigated actions, ready to decide. Low-risk steps already ran; recommendations wait for a person.</p>
+    <p class="lede">What Haulmind found overnight and this morning, already looked into. Approve the step it suggests, or tell it why not.</p>
   </div>
+  <form class="toolbar" id="filters" method="get" action="/inbox" hx-get="/inbox" hx-target="#queue" hx-swap="innerHTML" hx-push-url="true" hx-trigger="input changed delay:300ms from:#q, change from:#urgency, change from:#truck, change from:#driver">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <label class="search">{{ icon("search") }}<input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by truck, driver, or problem" aria-label="Search the inbox"></label>
+    <select class="input" id="urgency" name="urgency" aria-label="Urgency" style="width:auto">
+      <option value="" {{ 'selected' if not urgency }}>Any urgency</option>
+      <option value="urgent" {{ 'selected' if urgency == 'urgent' }}>Urgent</option>
+      <option value="medium" {{ 'selected' if urgency == 'medium' }}>Worth a look</option>
+      <option value="low" {{ 'selected' if urgency == 'low' }}>Low</option>
+    </select>
+    <select class="input" id="truck" name="truck" aria-label="Truck" style="width:auto">
+      <option value="">Any truck</option>
+      {% for v in trucks %}<option value="{{ v.id }}" {{ 'selected' if v.id == truck }}>Truck {{ v.unit }}</option>{% endfor %}
+    </select>
+    <select class="input" id="driver" name="driver" aria-label="Driver" style="width:auto">
+      <option value="">Any driver</option>
+      {% for d in drivers %}<option value="{{ d.id }}" {{ 'selected' if d.id == driver }}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </form>
 </div>
-<nav class="tabs" aria-label="Queues">
-  <a href="/inbox?tab=pending" class="{{ 'active' if tab == 'pending' }}">Needs approval ({{ counts.pending }})</a>
-  <a href="/inbox?tab=recommended" class="{{ 'active' if tab == 'recommended' }}">Recommendations ({{ counts.recommended }})</a>
-  <a href="/inbox?tab=auto" class="{{ 'active' if tab == 'auto' }}">Ran automatically ({{ counts.auto }})</a>
-  <a href="/inbox?tab=decided" class="{{ 'active' if tab == 'decided' }}">Decided ({{ counts.decided }})</a>
+<nav class="tabs" aria-label="Inbox sections">
+  {% for key, label_text in tabs %}
+  <a href="/inbox?tab={{ key }}{{ qs }}" {% if tab == key %}aria-current="page"{% endif %}>{{ label_text }} <span class="n">{{ counts[key] }}</span></a>
+  {% endfor %}
 </nav>
-<div class="split">
-  <div id="queue" hx-get="/inbox/queue?tab={{ tab }}{% if selected %}&selected={{ selected.a.id }}{% endif %}" hx-trigger="every 5s, queue-changed from:body" hx-swap="innerHTML">
-    {% include "_queue.html" %}
+<div class="inbox">
+  <div>
+    <div id="queue" hx-get="/inbox/queue?tab={{ tab }}{{ qs }}{% if selected %}&selected={{ selected.id }}{% endif %}" hx-trigger="every 5s, queue-changed from:body" hx-swap="innerHTML">
+      {% include "_queue.html" %}
+    </div>
   </div>
-  <div id="detail" class="detail">
-    {% if selected %}{% include "_action_detail.html" %}{% else %}<div class="empty">Select an item to see its evidence and reasoning.</div>{% endif %}
+  <div id="detail" class="detail" data-selected="{{ selected.id if selected else '' }}">
+    {% if selected %}{% include "_action_detail.html" %}{% else %}
+    <div class="detail-card"><div class="empty">{{ icon("inbox", "icon icon-xl") }}<h3>Pick an item to see the details</h3><p>You will see what happened, why it matters, and what Haulmind checked.</p></div></div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

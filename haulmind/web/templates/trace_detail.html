@@ -1,28 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Trace {{ tr.id }} – Haulmind{% endblock %}
+{% from "_macros.html" import icon %}
+{% block title %}Behind the scenes, Haulmind{% endblock %}
 {% block content %}
+<p style="margin-bottom:.75rem"><a href="/traces" class="btn btn-quiet btn-sm">{{ icon("arrow-left") }} Behind the scenes</a></p>
 <div class="page-head">
   <div>
-    <h1>{{ tr.name }}</h1>
-    <p>{% if inc %}<a href="/incidents/{{ inc.id }}">{{ inc.type.replace('_', ' ') }} on {{ inc.vehicle_id }}</a>, {% endif %}outcome {{ tr.attrs_json.outcome or tr.status }}.</p>
-  </div>
-  <div class="kv" style="min-width:420px">
-    <div><b>{{ total_ms }}</b><span>ms wall time</span></div>
-    <div><b>{{ tr.llm_requests }}</b><span>model calls (uncached)</span></div>
-    <div><b>{{ tr.input_tokens }}</b><span>tokens in</span></div>
-    <div><b>{{ tr.output_tokens }}</b><span>tokens out</span></div>
+    <h1 style="max-width:30ch">{{ about }}</h1>
+    <p class="lede">{{ outcome }}. The whole look took {{ duration }}{% if incident_id %}. <a href="/incidents/{{ incident_id }}">See the problem</a>{% endif %}.</p>
   </div>
 </div>
-<div class="card">
-  <div class="spans">
-    {% for r in rows %}{% set sp = r.sp %}
-      <div class="span kind-{{ sp.kind }} status-{{ sp.status }}" title="{{ sp.attrs_json|pretty }}">
-        <span class="name" style="padding-left: {{ r.depth * 1.1 }}rem">{{ sp.name }}{% if sp.cached %} (cached){% endif %}</span>
-        <span class="track"><span style="left: {{ r.left }}%; width: {{ r.width }}%"></span></span>
-        <span class="stats">{{ sp.latency_ms }} ms{% if sp.model %}, {{ sp.model }}, {{ sp.input_tokens }}+{{ sp.output_tokens }} tok{% endif %}{% if sp.status == 'error' %}, error: {{ sp.error[:60] }}{% endif %}</span>
+<section class="card">
+  <ol class="steps">
+    {% for r in rows %}
+    <li class="step{% if r.model %} model{% endif %}{% if r.failed %} failed{% endif %}">
+      <span class="step-icon">{{ icon(r.icon) }}</span>
+      <div>
+        <div class="step-what">{{ r.what }} <span class="quiet small">{{ r.took }}</span></div>
+        <div class="bar-row" style="grid-template-columns: 1fr; margin-top:.3rem; max-width: 36rem"><span class="track" aria-hidden="true"><i style="margin-left: {{ r.left }}%; width: {{ r.width }}%"></i></span></div>
+        <details class="disclosure technical" style="margin-top:.25rem;border-top:0;padding-top:0"><summary>Technical details</summary><pre>{{ r.technical }}</pre></details>
       </div>
+    </li>
     {% endfor %}
-  </div>
-</div>
-<p style="margin-top:.75rem;font-size:.85rem;color:var(--ink-3)">Amber bars are model calls, blue bars are MCP tool calls, grey bars are agent steps. Hover a row for its attributes.</p>
+  </ol>
+  <details class="disclosure technical"><summary>Technical details</summary><pre>{{ technical }}</pre></details>
+</section>
 {% endblock %}

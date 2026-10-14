@@ -22,41 +22,41 @@ inbox populated before you start talking, let it run for 90 seconds, then pause 
 Haulmind watches the same telematics stream, but instead of alerting it investigates and hands
 you a short queue of actions you can approve in one click."
 
-Point at the status bar: the simulated clock, events per second, and the percentage of events
-handled by rules before any model call (it stays above 95%).
+Point at the top bar: the fleet clock on its 24-hour log strip, the live dot, and the
+"Updated just now" text. The share of readings handled by plain rules lives on the
+"How well it works" page (it stays above 95%).
 
-**0:20 - Watch it filter (Incidents page)**
+**0:20 - Watch it filter (Problems found page)**
 "Thousands of GPS pings and engine readings go by. Rules drop almost all of them. Only a
 handful of clusters ever reach a language model, and each one becomes an incident with a
 cost: model calls, tokens, latency."
 
-**0:40 - The incident lands (Inbox, Needs approval tab)**
-Click "Hand off trip to spare driver". Read the summary:
-"Driver D-07 will run out of drive time about an hour before reaching the destination."
+**0:40 - The incident lands (Inbox, Needs your OK tab)**
+Click the item. Read the headline, which is built from the facts rather than written by the
+model: "Frankie Castillo will run out of drive time about an hour before reaching Houston."
 
 Walk the panel top to bottom:
-- *Why the agent proposes this*: the planner's reasoning and the verifier's check.
-- *What will run*: the exact tool and arguments, nothing hidden.
-- *Evidence*: the HOS clock, the vehicle status, the rested spare driver found by
-  `find_idle_vehicles`, each labelled E1, E2, E3.
+- *Why it matters*, how sure Haulmind is, and the drive-time strip.
+- *What Haulmind will do*: the step in plain words, with the trip, the drivers and the reason.
+- *What Haulmind checked*: each step as a sentence ("Looked at the driver's remaining hours")
+  with what it found. Raw tool names and payloads sit under "Technical details", collapsed.
 
-**1:05 - Autonomy tiers (switch to Ran automatically)**
+**1:05 - Autonomy tiers (switch to Handled for you)**
 "The same incident already produced a low-risk action: a message telling the driver to plan a
 safe stop. That ran on its own, rate-limited and checked against a block list. The handoff
 costs money and touches a customer, so it waits for you. Grounding a truck or suspending a
 fuel card would only ever be a recommendation."
 
 **1:25 - Approve**
-Back on the pending item, click "Approve and run". The approval is bound to those exact
-arguments; the MCP gateway validates it, executes the reassignment, and the status flips to
-executed. Open the audit log for a second: incident opened, actions proposed, approval,
-execution, all attributed.
+Back on the pending item, press `a` or click "Approve the handoff". A toast offers Undo for a
+few seconds, then the approval is sent, bound to those exact arguments; the gateway validates
+it and executes the reassignment. Open History for a second: found a problem, asked for your
+OK, you approved, trip handed over, all attributed.
 
 **1:45 - Learning and tracing (optional close)**
-Reject a weaker item with "Driver manages the clock". The notice shows the memory update:
-the alert threshold for that driver tightens, and the fleet-wide default tightens after a
-couple of such rejections. Then open the trace link: every agent step, tool call and model
-call with latency and token counts.
+Dismiss a weaker item with "This driver manages their own hours". The notice says what
+Haulmind will remember. Press `?` to show the keyboard shortcuts, or `Ctrl K` to jump to a
+truck or driver by name. The technical trace is one disclosure away if anyone asks.
 
 **2:00 - Close**
 "Everything runs on a laptop with SQLite and a free Gemini key. The policy that decides what

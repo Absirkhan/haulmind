@@ -1,19 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Audit log – Haulmind{% endblock %}
+{% from "_macros.html" import icon, when, empty %}
+{% block title %}History, Haulmind{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Audit log</h1><p>Every incident, proposal, policy decision and manager action, newest first.</p></div></div>
-<table>
-  <thead><tr><th>Wall time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
-  <tbody>
+<div class="page-head">
+  <div>
+    <h1>History</h1>
+    <p class="lede">Everything Haulmind did and every decision you made, newest first.</p>
+  </div>
+</div>
+{% if rows %}
+<div class="rows" role="list">
   {% for r in rows %}
-    <tr>
-      <td>{{ r.ts|ts("%H:%M:%S") }}</td>
-      <td>{{ r.actor }}</td>
-      <td>{{ r.action }}</td>
-      <td>{% if r.entity_type == 'incident' %}<a href="/incidents/{{ r.entity_id }}">{{ r.entity_id }}</a>{% elif r.entity_type == 'action' %}<a href="/inbox?tab=decided&selected={{ r.entity_id }}">{{ r.entity_id }}</a>{% else %}{{ r.entity_type }} {{ r.entity_id }}{% endif %}</td>
-      <td style="font-size:.82rem;color:var(--ink-2)">{% for k, v in r.details_json.items() %}{{ k }}: {{ v if v is string else (v|pretty)[:140] }}{{ "; " if not loop.last }}{% endfor %}</td>
-    </tr>
-  {% else %}<tr><td colspan="5" class="empty">Nothing logged yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
+  <div class="row" role="listitem">
+    <span>
+      <div class="t">{{ r.text }}</div>
+      {% if r.about %}<div class="s">{% if r.href %}<a href="{{ r.href }}">{{ r.about }}</a>{% else %}{{ r.about }}{% endif %}</div>{% endif %}
+      <details class="disclosure technical" style="margin-top:.25rem;border-top:0;padding-top:0"><summary>Technical details</summary><pre>{{ r.technical }}</pre></details>
+    </span>
+    <span class="w">{{ when(r.when, r.when_full) }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+{{ empty("Nothing yet", "Decisions and actions will be listed here as they happen.", "history") }}
+{% endif %}
 {% endblock %}

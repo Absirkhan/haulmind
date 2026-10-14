@@ -4,30 +4,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Haulmind{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    (function () {
+      try { var t = JSON.parse(localStorage.getItem("theme")); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      var m = location.search.match(/[?&]theme=(dark|light)\b/); if (m) document.documentElement.setAttribute("data-theme", m[1]);
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-<div class="frame">
-  <aside class="rail">
-    <div class="brand">Haulmind<small>fleet operations agent</small></div>
-    <nav class="nav" aria-label="Main">
-      <a href="/inbox" class="{{ 'active' if page == 'inbox' }}">Inbox {% if pending_count %}<span class="count">{{ pending_count }}</span>{% endif %}</a>
-      <a href="/incidents" class="{{ 'active' if page == 'incidents' }}">Incidents</a>
-      <a href="/fleet" class="{{ 'active' if page == 'fleet' }}">Fleet</a>
-      <a href="/traces" class="{{ 'active' if page == 'traces' }}">Traces</a>
-      <a href="/audit" class="{{ 'active' if page == 'audit' }}">Audit log</a>
-    </nav>
-    <div class="rail-foot">
-      <div>Run <span title="{{ run_id }}">{{ (run_id or 'none')[:16] }}</span></div>
-      <div>Model provider: {{ provider }}</div>
-      <div style="margin-top:.5rem">Synthetic fleet. Nothing here is real.</div>
-    </div>
-  </aside>
-  <main class="main">
+{% macro icon(name, cls="icon") -%}
+<svg class="{{ cls }}" aria-hidden="true" focusable="false"><use href="/static/icons.svg#{{ name }}"></use></svg>
+{%- endmacro %}
+<a class="visually-hidden" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="/inbox">{{ icon("truck", "icon icon-lg") }} Haulmind</a>
+  <nav class="nav" aria-label="Main">
+    <a href="/inbox" {% if page == 'inbox' %}aria-current="page"{% endif %}>Inbox{% if pending_count %} <span class="count" aria-label="{{ pending_count }} waiting for your OK">{{ pending_count }}</span>{% endif %}</a>
+    <a href="/fleet" {% if page == 'fleet' %}aria-current="page"{% endif %}>Trucks</a>
+    <a href="/incidents" {% if page == 'incidents' %}aria-current="page"{% endif %}>Problems found</a>
+    <a href="/performance" {% if page == 'performance' %}aria-current="page"{% endif %}>How well it works</a>
+    <a href="/audit" {% if page == 'audit' %}aria-current="page"{% endif %}>History</a>
+  </nav>
+  <div class="topbar-right">
     <div id="stream" hx-get="/stream" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
-    {% block content %}{% endblock %}
-  </main>
-</div>
+    <button class="btn btn-quiet btn-sm" type="button" data-open-palette aria-label="Search and commands">{{ icon("search") }}<span class="kbd">Ctrl K</span></button>
+    <button class="btn btn-quiet icon-btn" type="button" data-theme-toggle aria-label="Switch theme">{{ icon("moon") }}</button>
+  </div>
+</header>
+<main class="main" id="main">
+  {% block content %}{% endblock %}
+</main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<dialog id="palette" class="palette" aria-label="Search and commands">
+  <label class="search">{{ icon("search") }}<input type="text" placeholder="Go to a page, a truck, or a driver" autocomplete="off" aria-label="Search"></label>
+  <ul id="palette-list" class="palette-list" role="listbox"></ul>
+</dialog>
+<script type="application/json" id="palette-data">{{ palette_json|safe }}</script>
+
+<dialog id="shortcuts" aria-labelledby="shortcuts-title">
+  <div class="dialog-head"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button class="btn btn-quiet icon-btn" type="button" data-close-dialog aria-label="Close">{{ icon("x") }}</button></div>
+  <div class="dialog-body">
+    <div class="shortcuts">
+      <div><span>Next item</span><span class="kbd">j</span></div>
+      <div><span>Previous item</span><span class="kbd">k</span></div>
+      <div><span>Approve, or mark as handled</span><span class="kbd">a</span></div>
+      <div><span>Dismiss</span><span class="kbd">d</span></div>
+      <div><span>Not now</span><span class="kbd">n</span></div>
+      <div><span>Search and commands</span><span><span class="kbd">Ctrl</span> <span class="kbd">K</span></span></div>
+      <div><span>This list</span><span class="kbd">?</span></div>
+      <div><span>Close a panel</span><span class="kbd">Esc</span></div>
+    </div>
+  </div>
+</dialog>
 </body>
 </html>

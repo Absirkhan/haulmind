@@ -1,22 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Traces – Haulmind{% endblock %}
+{% from "_macros.html" import icon, when, empty %}
+{% block title %}Behind the scenes, Haulmind{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Traces</h1><p>One trace per cluster the agent looked at: every step, tool call and model call with latency and tokens.</p></div></div>
-<table>
-  <thead><tr><th>Started</th><th>Trace</th><th>Incident</th><th>Outcome</th><th class="num">Model calls</th><th class="num">Tokens in / out</th><th class="num">Wall time</th></tr></thead>
-  <tbody>
-  {% for t in rows %}
-    {% set inc = incs.get(t.incident_id) %}
-    <tr>
-      <td>{{ t.started_ts|ts("%H:%M:%S") }}</td>
-      <td><a href="/traces/{{ t.id }}">{{ t.name }}</a></td>
-      <td>{% if inc %}<a href="/incidents/{{ inc.id }}">{{ inc.type.replace('_', ' ') }} {{ inc.vehicle_id }}</a>{% else %}-{% endif %}</td>
-      <td>{{ t.attrs_json.outcome or t.status }}</td>
-      <td class="num">{{ t.llm_requests }}</td>
-      <td class="num">{{ t.input_tokens }} / {{ t.output_tokens }}</td>
-      <td class="num">{{ ((t.ended_ts - t.started_ts).total_seconds() * 1000)|int if t.ended_ts else '-' }} ms</td>
-    </tr>
-  {% else %}<tr><td colspan="7" class="empty">No traces yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
+<div class="page-head">
+  <div>
+    <h1>Behind the scenes</h1>
+    <p class="lede">Every time Haulmind took a closer look at a group of alerts, whether or not it found a problem.</p>
+  </div>
+</div>
+{% if rows %}
+<div class="rows" role="list">
+  {% for r in rows %}
+  <a class="row" role="listitem" href="/traces/{{ r.id }}">
+    <span>
+      <div class="t">{{ r.about }}</div>
+      <div class="s">{{ r.outcome }}{% if r.duration %} · took {{ r.duration }}{% endif %}</div>
+    </span>
+    <span class="w">{{ when(r.when, r.when_full) }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+{{ empty("Nothing yet", "Haulmind has not needed a closer look at anything so far.", "eye") }}
+{% endif %}
 {% endblock %}

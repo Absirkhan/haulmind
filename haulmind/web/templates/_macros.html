@@ -1,0 +1,27 @@
+{% macro icon(name, cls="icon") -%}
+<svg class="{{ cls }}" aria-hidden="true" focusable="false"><use href="/static/icons.svg#{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro badge(text, tone="neutral", title="") -%}
+<span class="badge{% if tone and tone != 'neutral' %} badge-{{ tone }}{% endif %}"{% if title %} title="{{ title }}"{% endif %}>{{ text }}</span>
+{%- endmacro %}
+
+{% macro sure(label, level, pct) -%}
+<span class="sure" title="Haulmind's own estimate: {{ pct }}"><span class="sure-meter" data-level="{{ level }}" aria-hidden="true"><i></i><i></i><i></i></span>{{ label }}</span>
+{%- endmacro %}
+
+{% macro drivebar(d) -%}
+{% if d %}<span class="drivebar" role="img" aria-label="{{ d.left_text }} of drive time left{% if d.need_text %}, {{ d.need_text }} needed{% endif %}" title="{{ d.left_text }} of drive time left{% if d.need_text %}, {{ d.need_text }} still to drive{% endif %}"><i style="width: {{ d.left_pct }}%"></i>{% if d.need_pct is not none %}<b style="left: {{ d.need_pct }}%"></b>{% endif %}</span>{% endif %}
+{%- endmacro %}
+
+{% macro when(text, full) -%}
+<time title="{{ full }}">{{ text }}</time>
+{%- endmacro %}
+
+{% macro empty(title, text, name="circle-check") -%}
+<div class="empty">{{ icon(name, "icon icon-xl") }}<h3>{{ title }}</h3><p>{{ text }}</p></div>
+{%- endmacro %}
+
+{% macro skeleton(n=3) -%}
+<div class="skeleton skeleton-on-load" aria-hidden="true">{% for _ in range(n) %}<i class="t"></i><i></i><i class="s"></i>{% endfor %}</div>
+{%- endmacro %}

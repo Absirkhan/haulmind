@@ -62,7 +62,7 @@ make run                        # MCP server + web app (UI, event bus, simulator
 ```
 
 Open <http://127.0.0.1:8000/inbox>. The default run streams 25 trucks for 48 simulated hours
-at two simulated minutes per real second; change the speed from the status bar.
+at two simulated minutes per real second.
 
 Other entry points:
 
@@ -110,6 +110,29 @@ Hard rules that no approval can override: forbidden phrases and links in driver 
 (HR/legal language, prompt-injection echoes), a 15,000 USD cap on work orders, id validation,
 and sliding-window rate limits per tool and per driver. `tests/test_policy.py` and
 `tests/test_mcp_tools.py` show an agent trying to escalate and failing every time.
+
+## The approval inbox
+
+The web app is written for dispatchers, not engineers. Every string on screen goes through one
+mapping module, `haulmind/web/copy.py`, which turns ids, enum values, tool names and model
+prose into fleet language with a plain-English fallback, so a raw value can never leak. A
+test renders every page and fails if an id, snake_case token, JSON fragment, tool name or
+piece of jargon is visible outside a collapsed "Technical details" disclosure.
+
+- **Inbox**: each item says what happened ("Frankie Castillo will run out of drive time about
+  an hour before reaching Houston"), why it matters, how sure Haulmind is, who is affected,
+  and the step it proposes. Three queues map to the autonomy tiers: *Needs your OK*, *For your
+  decision*, *Handled for you*. Approve, Not now and Dismiss have an undo window; Dismiss
+  asks why, and the answer feeds agent memory.
+- **What Haulmind checked**: the investigation as a plain timeline ("Looked at the driver's
+  remaining hours", "Compared recent fuel purchases with the tank size") with what each step
+  found. Raw tool names, arguments and payloads live only under "Technical details".
+- **Trucks**, **Problems found**, **History** and **How well Haulmind is catching problems**
+  (the evaluation scorecard in plain words, read from `evals/results.json`).
+- Keyboard first: `j`/`k` to move, `a` to approve, `d` to dismiss, `n` for not now, `?` for
+  the shortcut sheet, `Ctrl K` for a command palette that also finds trucks and drivers.
+  Filters and search live in the URL. Light and dark themes follow the system, with a toggle.
+  No build step: Jinja templates, HTMX, one CSS token file and one small script.
 
 ## Learning from manager decisions
 

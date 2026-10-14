@@ -1,0 +1,116 @@
+/* Haulmind design tokens.
+   One neutral base (warm paper / warm charcoal), one accent (interstate-shield cobalt, used only
+   for links, focus, selection and the live dot), and three semantic tints for the three tiers:
+   sage = handled for you, amber = needs your OK, rose = for your decision.
+   Type: Public Sans, one family, tabular figures everywhere a number can line up. */
+
+:root {
+  color-scheme: light;
+  --paper: #f4f3ef;
+  --surface: #ffffff;
+  --surface-2: #ecebe5;
+  --surface-3: #e3e1da;
+  --ink: #1a1b18;
+  --ink-2: #585a54;
+  --ink-3: #7e8079;
+  --line: #dedcd4;
+  --line-2: #cfcdc4;
+
+  --accent: #2a52a3;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4eaf7;
+
+  --ok: #1e6b3a;
+  --ok-soft: #e3f0e6;
+  --ok-line: #b8d8c2;
+  --warn: #7a4e00;
+  --warn-soft: #fbefd2;
+  --warn-line: #ecd79a;
+  --stop: #9a2f26;
+  --stop-soft: #f8e1dd;
+  --stop-line: #edbab3;
+
+  --shadow-pop: 0 12px 32px -12px rgba(26, 27, 24, 0.35), 0 2px 6px -2px rgba(26, 27, 24, 0.15);
+  --radius-s: 4px;
+  --radius: 8px;
+  --radius-l: 12px;
+
+  --font: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+
+  --t-xs: 0.75rem;   /* 12 */
+  --t-s: 0.8125rem;  /* 13 */
+  --t-m: 0.875rem;   /* 14 */
+  --t-l: 1rem;       /* 16 */
+  --t-xl: 1.25rem;   /* 20 */
+  --t-2xl: 1.5rem;   /* 24 */
+  --t-3xl: 1.875rem; /* 30 */
+
+  --dur: 180ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --topbar-h: 56px;
+  --content-w: 1280px;
+  --gutter: 32px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #151614;
+    --surface: #1e1f1c;
+    --surface-2: #262824;
+    --surface-3: #2f312c;
+    --ink: #ecebe5;
+    --ink-2: #a6a89f;
+    --ink-3: #85877f;
+    --line: #2f312c;
+    --line-2: #3b3d37;
+    --accent: #8cb0f2;
+    --accent-ink: #0f1a33;
+    --accent-soft: #1e2a44;
+    --ok: #7fcb9a;
+    --ok-soft: #16281c;
+    --ok-line: #244d33;
+    --warn: #f0c25a;
+    --warn-soft: #2e2410;
+    --warn-line: #5c4a1e;
+    --stop: #f09a90;
+    --stop-soft: #331b19;
+    --stop-line: #5e2c27;
+    --shadow-pop: 0 16px 40px -12px rgba(0, 0, 0, 0.7), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #151614;
+  --surface: #1e1f1c;
+  --surface-2: #262824;
+  --surface-3: #2f312c;
+  --ink: #ecebe5;
+  --ink-2: #a6a89f;
+  --ink-3: #85877f;
+  --line: #2f312c;
+  --line-2: #3b3d37;
+  --accent: #8cb0f2;
+  --accent-ink: #0f1a33;
+  --accent-soft: #1e2a44;
+  --ok: #7fcb9a;
+  --ok-soft: #16281c;
+  --ok-line: #244d33;
+  --warn: #f0c25a;
+  --warn-soft: #2e2410;
+  --warn-line: #5c4a1e;
+  --stop: #f09a90;
+  --stop-soft: #331b19;
+  --stop-line: #5e2c27;
+  --shadow-pop: 0 16px 40px -12px rgba(0, 0, 0, 0.7), 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --gutter: 16px;
+  }
+}
