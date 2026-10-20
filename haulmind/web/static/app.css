@@ -315,6 +315,11 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
 .map .dot.stop { fill: var(--stop); }
 .map .dot.moving { fill: var(--ok); }
 .map .city { fill: var(--ink-3); font-size: 9px; font-family: var(--font); }
+.map .truck-mark { color: var(--ink-3); }
+.map .truck-mark .halo { fill: var(--surface); stroke: currentColor; stroke-width: 1; opacity: 0.9; }
+.map .truck-mark svg { color: var(--ink); overflow: visible; }
+.map .truck-mark.issue { color: var(--warn); } .map .truck-mark.stop { color: var(--stop); } .map .truck-mark.moving { color: var(--ok); }
+.map .truck-mark:hover .halo { stroke-width: 2; }
 .map .citydot { fill: var(--line-2); }
 .map-legend { display: flex; gap: 1rem; flex-wrap: wrap; color: var(--ink-3); font-size: var(--t-xs); margin-top: 0.5rem; }
 .map-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; vertical-align: middle; }

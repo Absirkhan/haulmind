@@ -134,6 +134,18 @@ piece of jargon is visible outside a collapsed "Technical details" disclosure.
   Filters and search live in the URL. Light and dark themes follow the system, with a toggle.
   No build step: Jinja templates, HTMX, one CSS token file and one small script.
 
+### The landing page
+
+The site root (`/`) is a landing page for the product, built from the same tokens and vehicle
+glyphs as the app. Its hero is a living map of the fleet's own 22-city network drawn on a
+Canvas: seeded routes, vehicles moving with soft trails, and alert cards that appear beside a
+truck in plain words and resolve into a tier. Scrolling sorts a cloud of raw alerts into the
+short list, drives a truck past the three steps, and flows items down the three lanes.
+Everything animates transform and opacity only, pauses off-screen or when the tab is hidden,
+respects `prefers-reduced-motion` with composed stills, and has a "Pause animations" toggle in
+the footer. For screenshots, `?review=<section>&p=<0..1>` renders one section at a given
+scroll progress and `?theme=light|dark` forces a theme.
+
 ## Learning from manager decisions
 
 Approve, reject and edit decisions are stored per driver and per vehicle. Rejections carry a

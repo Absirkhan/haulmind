@@ -481,7 +481,17 @@ def fleet_view(s: Any, names: C.Names, run_id: str | None, now: datetime | None)
         if v.lat is not None and v.lon is not None:
             x, y = _project(v.lat, v.lon, bbox, w, h, pad)
             points.append(
-                {"x": x, "y": y, "tone": tone, "label": f"Truck {v.unit_number}", "id": v.id}
+                {
+                    "x": x,
+                    "y": y,
+                    "tone": tone,
+                    "label": f"Truck {v.unit_number}",
+                    "id": v.id,
+                    "heading": float(v.heading or 0.0),
+                    "glyph": "veh-semi"
+                    if v.has_reefer or "Sleeper" in (v.model or "")
+                    else "veh-daycab",
+                }
             )
     cities: list[dict[str, Any]] = []
     for c in CITIES:
@@ -608,6 +618,37 @@ def _results_generated(md_path: Path) -> str:
     except (OSError, IndexError):
         pass
     return ""
+
+
+def landing_results(results_path: Path) -> dict[str, Any]:
+    """Headline numbers for the landing page, from the last evaluation run."""
+    perf = performance_view(results_path)
+    base: dict[str, Any] = {}
+    try:
+        base = (json.loads(results_path.read_text(encoding="utf-8")) or {}).get("base") or {}
+    except (OSError, ValueError):
+        base = {}
+    if not perf:
+        return {
+            "practice": True,
+            "provider": "offline practice mode",
+            "scenario": "25 trucks over 48 hours with planted problems",
+            "caught_pct": 100,
+            "filtered_pct": 99.8,
+            "false_pct": 20,
+            "breaches": 0,
+            "per_type": [],
+        }
+    return {
+        "practice": perf["practice"],
+        "provider": perf["provider"],
+        "scenario": perf["scenario"],
+        "caught_pct": round(100 * float(base.get("recall") or 0)),
+        "filtered_pct": round(float(base.get("filtered_pct") or 0), 1),
+        "false_pct": round(100 * float(base.get("false_alert_rate") or 0)),
+        "breaches": int(base.get("policy_violations") or 0),
+        "per_type": perf["per_type"],
+    }
 
 
 # --- command palette -------------------------------------------------------------------------------

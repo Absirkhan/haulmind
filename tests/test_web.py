@@ -46,6 +46,7 @@ async def _populate(tc: ToolClient) -> str:
 async def test_pages_render_and_decisions_work(client: TestClient, tool_client: ToolClient) -> None:
     await _populate(tool_client)
     for path in (
+        "/",
         "/inbox",
         "/inbox?tab=auto",
         "/inbox?tab=recommended",
@@ -185,6 +186,7 @@ async def test_no_developer_jargon_is_visible(client: TestClient, tool_client: T
         ids = [a.id for a in acts]
         incs = [i.id for i in s.execute(select(Incident).limit(6)).scalars()]
     pages = [
+        "/",
         "/inbox",
         "/inbox?tab=auto",
         "/inbox?tab=recommended",

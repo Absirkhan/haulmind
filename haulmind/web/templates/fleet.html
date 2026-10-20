@@ -43,7 +43,9 @@
         {% if c.label %}<text class="city" x="{{ c.x + 4 }}" y="{{ c.y - 3 }}">{{ c.name }}</text>{% endif %}
       {% endfor %}
       {% for p in fleet.points %}
-        <a href="/fleet#truck-{{ p.label.split(' ')[1] }}"><circle class="dot {{ p.tone }}" cx="{{ p.x }}" cy="{{ p.y }}" r="4.5"><title>{{ p.label }}</title></circle></a>
+        <a href="/fleet#truck-{{ p.label.split(' ')[1] }}" class="truck-mark {{ p.tone }}">
+          <g transform="translate({{ p.x }} {{ p.y }}) rotate({{ (p.heading - 90)|round(1) }})"><title>{{ p.label }}</title><circle class="halo" r="9"></circle><svg x="-9" y="-4" width="18" height="8" viewBox="-1 -1 30 14"><use href="/static/icons.svg#{{ p.glyph }}"></use></svg></g>
+        </a>
       {% endfor %}
     </svg>
     <div class="map-legend">

@@ -246,9 +246,21 @@ def create_app() -> FastAPI:
 
     # --- pages ---------------------------------------------------------------------------------
 
-    @app.get("/", include_in_schema=False)
-    async def root() -> RedirectResponse:
-        return RedirectResponse("/inbox", status_code=307)
+    @app.get("/", response_class=HTMLResponse)
+    async def landing(request: Request) -> HTMLResponse:
+        from haulmind.simulator.data import CITIES
+
+        return templates.TemplateResponse(
+            request,
+            "landing.html",
+            {
+                "request": request,
+                "results": V.landing_results(RESULTS),
+                "landing_json": json.dumps(
+                    {"cities": [{"name": c.name, "lat": c.lat, "lon": c.lon} for c in CITIES]}
+                ),
+            },
+        )
 
     @app.get("/health")
     async def health() -> JSONResponse:

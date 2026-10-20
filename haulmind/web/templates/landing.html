@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Haulmind</title>
+  <meta name="description" content="Haulmind watches your fleet's telematics, looks into what matters, and hands you a short list each morning: handled for you, needs your OK, for your decision.">
+  <script>
+    (function () {
+      try { var t = JSON.parse(localStorage.getItem("theme")); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      var m = location.search.match(/[?&]theme=(dark|light)\b/); if (m) document.documentElement.setAttribute("data-theme", m[1]);
+      try { if (JSON.parse(localStorage.getItem("anim-off"))) document.documentElement.classList.add("anim-off"); } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/landing.css">
+  <script src="/static/vehicles.js" defer></script>
+  <script src="/static/landing.js" defer></script>
+</head>
+<body>
+{% macro icon(name, cls="icon") -%}
+<svg class="{{ cls }}" aria-hidden="true" focusable="false"><use href="/static/icons.svg#{{ name }}"></use></svg>
+{%- endmacro %}
+<a class="visually-hidden" href="#main">Skip to content</a>
+<header class="lp-top">
+  <a class="lp-brand" href="/">{{ icon("truck", "icon icon-lg") }} Haulmind</a>
+  <div class="lp-top-right">
+    <button class="lp-iconbtn" type="button" data-theme-toggle aria-label="Switch theme">{{ icon("moon") }}</button>
+    <a class="lp-btn lp-btn-nav" href="/inbox" data-demo>Open the demo</a>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ============ hero: the living fleet map ============ -->
+  <section class="hero" id="hero" aria-labelledby="hero-title">
+    <div class="map-wrap" aria-hidden="true">
+      <canvas id="fleet-map" class="fleet-map"></canvas>
+      <div id="map-cards" class="map-cards"></div>
+      <div class="map-static" id="map-static"></div>
+    </div>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="micro">SYNTHETIC FLEET · 22 UNITS</div>
+        <h1 id="hero-title" class="display" data-reveal-words>Every alert, looked into before you see it.</h1>
+        <p class="lead">Haulmind watches the telematics feed from your trucks all night, checks what actually matters, and hands you a short list in the morning. Low-risk steps are already done. The rest waits for one tap.</p>
+        <div class="hero-actions">
+          <a class="lp-btn lp-btn-primary lp-btn-lg lp-magnetic" href="/inbox" data-demo>Open the demo</a>
+          <a class="lp-btn lp-btn-quiet lp-btn-lg" href="#how">See how it works</a>
+        </div>
+        <p class="micro quiet">No sign-up. A seeded fleet of 25 trucks runs in your browser.</p>
+      </div>
+      <div class="hero-preview" aria-label="A preview of the inbox">
+        <div class="preview-card lit" style="--i:0"><span class="edge warn"></span><div><div class="pc-title">Logan Mendoza will run out of drive time about 55 minutes before reaching Houston.</div><div class="pc-step">Hand the trip to Jordan Patel</div><div class="pc-meta">Truck 1204 · Very sure</div></div><span class="badge badge-warn">Needs your OK</span></div>
+        <div class="preview-card lit" style="--i:1"><span class="edge ok"></span><div><div class="pc-title">A 206 gallon fill on Truck 1202 at Austin Travel Center: more than the tank holds.</div><div class="pc-step">Hold the purchase for review</div><div class="pc-meta">Truck 1202 · Very sure</div></div><span class="badge badge-ok">Handled for you</span></div>
+        <div class="preview-card lit" style="--i:2"><span class="edge stop"></span><div><div class="pc-title">Truck 1206's fuel card was used 90 miles from the truck.</div><div class="pc-step">Suspend the fuel card</div><div class="pc-meta">Truck 1206 · Fairly sure</div></div><span class="badge badge-stop">For your decision</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ problem: noise becomes a short list ============ -->
+  <section class="problem" id="problem" aria-labelledby="problem-title">
+    <div class="sticky-stage">
+      <div class="section-head">
+        <div class="micro">THE PROBLEM</div>
+        <h2 id="problem-title" class="h-display">A 25-truck fleet produces <span class="num" data-count="8727">8,727</span> readings in two days. Four of them need you.</h2>
+        <p class="lead">Scroll, and watch Haulmind do what a dispatcher does by hand: throw away the noise, keep the problems, and say what to do about each one.</p>
+      </div>
+      <div class="chip-field" id="chip-field" aria-hidden="true"></div>
+      <ol class="calm-list" id="calm-list" aria-label="What is left after sorting">
+        <li class="calm-item" data-slot><span class="edge warn"></span><div><strong>Logan Mendoza will run out of drive time before Houston.</strong><span>Hand the trip to a rested driver</span></div><span class="badge badge-warn">Needs your OK</span></li>
+        <li class="calm-item" data-slot><span class="edge warn"></span><div><strong>Truck 1205 shows signs of a cooling system problem.</strong><span>Schedule service in Austin</span></div><span class="badge badge-warn">Needs your OK</span></li>
+        <li class="calm-item" data-slot><span class="edge ok"></span><div><strong>A fill on Truck 1202 was bigger than the tank.</strong><span>Purchase held for review</span></div><span class="badge badge-ok">Handled for you</span></li>
+        <li class="calm-item" data-slot><span class="edge ok"></span><div><strong>Sawyer Alvarez had 4 hard-braking events in two days.</strong><span>Coaching message sent</span></div><span class="badge badge-ok">Handled for you</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ how it works: one truck, three stations ============ -->
+  <section class="how" id="how" aria-labelledby="how-title">
+    <div class="sticky-stage">
+      <div class="section-head">
+        <div class="micro">HOW IT WORKS</div>
+        <h2 id="how-title" class="h-display">Watches. Checks. Tells you what to do.</h2>
+      </div>
+      <div class="road" id="road" aria-hidden="true">
+        <svg class="road-svg" viewBox="0 0 1000 120" preserveAspectRatio="none">
+          <line class="road-line" x1="20" y1="60" x2="980" y2="60"></line>
+          <line class="road-dash" x1="20" y1="60" x2="980" y2="60"></line>
+          <g class="station" data-at="0.16"><circle cx="180" cy="60" r="14"></circle></g>
+          <g class="station" data-at="0.5"><circle cx="500" cy="60" r="14"></circle></g>
+          <g class="station" data-at="0.84"><circle cx="820" cy="60" r="14"></circle></g>
+        </svg>
+        <div class="road-truck" id="road-truck"><svg viewBox="-1 -1 30 14" class="veh"><use href="/static/icons.svg#veh-semi"></use></svg><span class="micro">UNIT 1204</span></div>
+      </div>
+      <ol class="steps3">
+        <li class="step3" data-step="0"><div class="micro">01 · WATCHES</div><h3>Every reading, every minute</h3><p>Location, hours of service, fault codes, engine readings, fuel-card swipes. Simple rules handle 99% of it before any model is involved.</p></li>
+        <li class="step3" data-step="1"><div class="micro">02 · CHECKS</div><h3>Looks into the few that matter</h3><p>Pulls the driver's clock, the truck's history, nearby shops, the service guidance. Every check is written down in plain words.</p></li>
+        <li class="step3" data-step="2"><div class="micro">03 · TELLS YOU WHAT TO DO</div><h3>One step, ready to approve</h3><p>What happened, why it matters, how sure it is, and the exact action. Low-risk steps are done already.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ control: three lanes ============ -->
+  <section class="control" id="control" aria-labelledby="control-title">
+    <div class="section-head">
+      <div class="micro">YOU STAY IN CONTROL</div>
+      <h2 id="control-title" class="h-display">Three lanes. You decide how much it decides.</h2>
+      <p class="lead">Every action Haulmind can take is sorted into a lane in advance, in code, not in a prompt. An agent cannot talk its way into a faster lane.</p>
+    </div>
+    <div class="lanes" id="lanes" aria-hidden="true">
+      <div class="lane lane-ok">
+        <div class="lane-head"><span class="badge badge-ok">Handled for you</span><span class="micro">MESSAGE A DRIVER · HOLD A FUEL PURCHASE</span></div>
+        <div class="lane-track"><i class="flow" style="--d:0s"></i><i class="flow" style="--d:2s"></i><i class="flow" style="--d:4s"></i></div>
+        <p>Rate-limited and checked against a block list, then done.</p>
+      </div>
+      <div class="lane lane-warn">
+        <div class="lane-head"><span class="badge badge-warn">Needs your OK</span><span class="micro">SCHEDULE SERVICE · HAND OFF A TRIP</span></div>
+        <div class="lane-track"><span class="gate"></span><span class="tap"></span><i class="flow gated" style="--d:0s"></i><i class="flow gated" style="--d:3s"></i></div>
+        <p>Waits at the gate. Your tap is bound to those exact details.</p>
+      </div>
+      <div class="lane lane-stop">
+        <div class="lane-head"><span class="badge badge-stop">For your decision</span><span class="micro">SUSPEND A CARD · GROUND A TRUCK</span></div>
+        <div class="lane-track"><span class="stopmark"></span><i class="flow stopped" style="--d:0s"></i><i class="flow stopped" style="--d:3s"></i></div>
+        <p>Stops here. Haulmind only recommends. Nothing runs unless you do it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ what it catches ============ -->
+  <section class="catches" id="catches" aria-labelledby="catches-title">
+    <div class="section-head">
+      <div class="micro">WHAT IT CATCHES</div>
+      <h2 id="catches-title" class="h-display">The four things that go wrong on a long haul.</h2>
+    </div>
+    <div class="tiles">
+      <article class="tile lit">
+        <div class="tile-anim" aria-hidden="true">
+          <svg viewBox="0 0 120 120" class="anim-clock"><circle class="ring-bg" cx="60" cy="60" r="44"></circle><circle class="ring" cx="60" cy="60" r="44"></circle><text class="ring-text" x="60" y="66" text-anchor="middle">40 min</text></svg>
+        </div>
+        <h3>Drive-time limits</h3>
+        <p>A driver will hit the 11-hour limit before the delivery. Haulmind finds a rested driver nearby and asks you to approve the handoff.</p>
+      </article>
+      <article class="tile lit">
+        <div class="tile-anim" aria-hidden="true">
+          <svg viewBox="0 0 200 120" class="anim-temp"><polyline class="grid" points="10,100 190,100"></polyline><polyline class="line" points="10,92 40,90 70,88 100,80 130,70 160,52 190,34"></polyline><circle class="dot" cx="190" cy="34" r="4"></circle><text class="micro-svg" x="12" y="20">COOLANT · +17°F / 6 H</text></svg>
+        </div>
+        <h3>Engine trouble</h3>
+        <p>A code keeps coming back and the coolant is creeping up. It reads the service guidance, finds a shop on the route, and drafts the work order.</p>
+      </article>
+      <article class="tile lit">
+        <div class="tile-anim" aria-hidden="true">
+          <svg viewBox="0 0 200 120" class="anim-fuel"><path class="gauge-bg" d="M30 100 A70 70 0 0 1 170 100"></path><path class="gauge" d="M30 100 A70 70 0 0 1 170 100"></path><line class="needle" x1="100" y1="100" x2="100" y2="40"></line><circle cx="100" cy="100" r="5" class="pivot"></circle><text class="micro-svg" x="12" y="20">206 GAL · TANK 150</text></svg>
+        </div>
+        <h3>Fuel-card misuse</h3>
+        <p>A fill bigger than the tank, or miles from where the truck was. The purchase is held for review before anyone has to argue about it.</p>
+      </article>
+      <article class="tile lit">
+        <div class="tile-anim" aria-hidden="true">
+          <svg viewBox="0 0 200 120" class="anim-route"><path class="route" d="M10 60 C 60 60, 120 60, 190 60"></path><g class="offroute"><svg x="-14" y="-6" width="28" height="12" viewBox="-1 -1 30 14" class="veh"><use href="/static/icons.svg#veh-daycab"></use></svg></g><circle class="pulse" cx="150" cy="86" r="8"></circle><text class="micro-svg" x="12" y="20">4 HARD BRAKES · 2 DAYS</text></svg>
+        </div>
+        <h3>Unsafe driving</h3>
+        <p>A pattern of hard braking across trips, not one bad corner. A calm coaching message goes out on its own, and you see it happened.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ results ============ -->
+  <section class="results" id="results" aria-labelledby="results-title">
+    <div class="section-head">
+      <div class="micro">MEASURED, NOT PROMISED</div>
+      <h2 id="results-title" class="h-display">Scored against a fleet where we know the answers.</h2>
+      <p class="lead">{{ results.scenario }}. {% if results.practice %}These numbers come from Haulmind's offline practice mode, so treat them as a rehearsal.{% else %}Judgment calls were made by {{ results.provider }}.{% endif %}</p>
+    </div>
+    <div class="stats">
+      <div class="stat lit"><div class="stat-v"><span class="num" data-count="{{ results.caught_pct }}">0</span>%</div><div class="stat-l">Real problems caught</div></div>
+      <div class="stat lit"><div class="stat-v"><span class="num" data-count="{{ results.filtered_pct }}" data-decimals="1">0</span>%</div><div class="stat-l">Readings handled by simple rules</div></div>
+      <div class="stat lit"><div class="stat-v"><span class="num" data-count="{{ results.false_pct }}">0</span>%</div><div class="stat-l">False alarms, learned away in a day</div></div>
+      <div class="stat lit"><div class="stat-v"><span class="num" data-count="{{ results.breaches }}">0</span></div><div class="stat-l">Safety-rule breaches</div></div>
+    </div>
+    <div class="bars" aria-label="Problems caught by kind">
+      {% for row in results.per_type %}
+      <div class="bar-row"><span>{{ row.label }}</span><span class="track"><i style="--w: {{ row.pct }}%"></i></span><span class="mono">{{ row.detected }} / {{ row.total }}</span></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ============ final cta ============ -->
+  <section class="cta" aria-labelledby="cta-title">
+    <h2 id="cta-title" class="h-display">Open the inbox. The fleet is already running.</h2>
+    <p class="lead">A seeded day of 25 trucks, 8 planted problems and 6 look-alikes. Approve, dismiss, and watch it learn.</p>
+    <a class="lp-btn lp-btn-primary lp-btn-lg lp-magnetic" href="/inbox" data-demo>Open the demo</a>
+  </section>
+</main>
+
+<div class="leave-veil" aria-hidden="true"></div>
+<script type="application/json" id="landing-data">{{ landing_json|safe }}</script>
+</body>
+</html>
