@@ -22,8 +22,8 @@ inbox populated before you start talking, let it run for 90 seconds, then pause 
 Haulmind watches the same telematics stream, but instead of alerting it investigates and hands
 you a short queue of actions you can approve in one click."
 
-Point at the top bar: the fleet clock on its 24-hour log strip, the live dot, and the
-"Updated just now" text. The share of readings handled by plain rules lives on the
+Point at the top bar: the fleet clock on its 24-hour log strip, ticking as the simulated
+day runs. The share of readings handled by plain rules lives on the
 "How well it works" page (it stays above 95%).
 
 **0:20 - Watch it filter (Problems found page)**

@@ -10,10 +10,11 @@
       var m = location.search.match(/[?&]theme=(dark|light)\b/); if (m) document.documentElement.setAttribute("data-theme", m[1]);
     })();
   </script>
-  <link rel="stylesheet" href="/static/tokens.css">
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/htmx.min.js" defer></script>
-  <script src="/static/app.js" defer></script>
+  {% set v = static_version() if static_version is defined else '' %}
+  <link rel="stylesheet" href="/static/tokens.css{{ v }}">
+  <link rel="stylesheet" href="/static/app.css{{ v }}">
+  <script src="/static/htmx.min.js{{ v }}" defer></script>
+  <script src="/static/app.js{{ v }}" defer></script>
 </head>
 <body>
 {% macro icon(name, cls="icon") -%}

@@ -151,13 +151,6 @@ textarea.input { min-height: 5rem; resize: vertical; }
 .daystrip > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); opacity: 0.85; }
 .daystrip > b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--accent); transform: translateX(-1px); }
 .daystrip-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); width: 148px; margin-top: 2px; line-height: 1; }
-.live { display: inline-flex; align-items: center; gap: 0.4rem; font-size: var(--t-s); color: var(--ink-2); }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 40%, transparent); }
-.live[data-state="live"] .live-dot { animation: pulse 2.4s var(--ease) infinite; }
-.live[data-state="paused"] .live-dot { background: var(--warn); }
-.live[data-state="done"] .live-dot { background: var(--ink-3); }
-.live[data-state="lost"] .live-dot { background: var(--stop); }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
 .stream-bar { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; padding: 0.6rem 0; margin-bottom: 0.5rem; color: var(--ink-2); font-size: var(--t-s); }
 .stream-bar .controls { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; }

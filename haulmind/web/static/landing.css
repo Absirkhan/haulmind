@@ -11,7 +11,16 @@
   --route: color-mix(in srgb, var(--accent) 55%, transparent);
   --lane-h: 220px;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* sign plates: the cobalt guide sign keeps white lettering in both themes; at night it is a
+     deeper, lit blue rather than the pale link accent, so it reads as a sign, not a tint. */
+  --sign: var(--accent);
+  --sign-ink: var(--accent-ink);
+  --sign-glow: color-mix(in srgb, var(--sign) 45%, transparent);
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --sign: #3b64bb; --sign-ink: #ffffff; }
+}
+:root[data-theme="dark"] { --sign: #3b64bb; --sign-ink: #ffffff; }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -48,20 +57,52 @@ a { color: var(--accent); text-decoration: none; }
 .edge.ok { background: var(--ok); } .edge.warn { background: var(--warn); } .edge.stop { background: var(--stop); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
-/* ---------- buttons ---------- */
-.lp-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.1rem; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); font-weight: 600; font-family: var(--font); cursor: pointer; transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background 180ms; will-change: transform; }
-.lp-btn:hover { transform: translateY(-1px); text-decoration: none; }
-.lp-btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 0 0 0 var(--glow); }
-.lp-btn-primary:hover { box-shadow: 0 8px 28px -8px var(--glow), 0 0 0 4px var(--glow-soft); }
-.lp-btn-quiet { background: transparent; border-color: var(--line-2); }
-.lp-btn-quiet:hover { background: var(--surface-2); }
-.lp-btn-lg { padding: 0.85rem 1.4rem; font-size: 1.0625rem; border-radius: 12px; }
-/* top-bar button: static, quiet, no glow and no movement */
-.lp-btn-nav { background: transparent; color: var(--ink); border: 1px solid var(--line-2); border-radius: 8px; padding: 0.45rem 0.9rem; font-weight: 500; transition: background 180ms, border-color 180ms; }
-.lp-btn-nav:hover { transform: none; background: var(--surface-2); border-color: var(--ink-3); }
-.lp-btn-nav:active { transform: none; }
-.lp-iconbtn { background: transparent; border: 1px solid transparent; color: var(--ink-2); border-radius: 10px; padding: 0.45rem; cursor: pointer; display: inline-flex; }
-.lp-iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+/* ---------- buttons: highway sign plates ----------
+   Every button is built like a guide sign: a solid field, a 1px keyline inset 3px from the edge,
+   modest corners, mixed-case bold lettering. The primary is the cobalt sign; the quiet one is the
+   white regulatory plate. Hover is the sign catching headlights (keyline brightens, a soft halo
+   under the plate); press is a 1px drop. Buttons never move on their own. */
+.lp-btn {
+  --plate: var(--surface); --plate-ink: var(--ink); --plate-edge: var(--line-2);
+  --keyline: color-mix(in srgb, var(--ink) 30%, transparent);
+  --keyline-hover: color-mix(in srgb, var(--ink) 70%, transparent);
+  --halo: color-mix(in srgb, var(--ink) 18%, transparent);
+  position: relative; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 2.75rem; padding: 0.6rem 1.3rem; border-radius: 6px;
+  border: 1px solid var(--plate-edge); background: var(--plate); color: var(--plate-ink);
+  font-family: var(--font); font-weight: 600; font-size: 0.9375rem; letter-spacing: 0.01em; line-height: 1.2;
+  white-space: nowrap; cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 220ms var(--ease-out), background 180ms, border-color 180ms, translate 120ms var(--ease-out);
+}
+.lp-btn::before {
+  content: ""; position: absolute; inset: 3px; z-index: -1; border-radius: 3px;
+  border: 1px solid var(--keyline); pointer-events: none;
+  transition: border-color 220ms var(--ease-out);
+}
+.lp-btn:hover { text-decoration: none; box-shadow: 0 12px 28px -14px var(--halo); }
+.lp-btn:hover::before { border-color: var(--keyline-hover); }
+.lp-btn:active { translate: 0 1px; box-shadow: none; }
+.lp-btn:active::before { border-color: var(--keyline); }
+.lp-btn-primary {
+  --plate: var(--sign); --plate-ink: var(--sign-ink); --plate-edge: var(--sign);
+  --keyline: color-mix(in srgb, var(--sign-ink) 55%, transparent); --keyline-hover: var(--sign-ink);
+  --halo: var(--sign-glow);
+}
+.lp-btn-primary:hover { box-shadow: 0 14px 30px -12px var(--halo); }
+.lp-btn-quiet { --plate: var(--surface); }
+.lp-btn-lg { min-height: 3.25rem; padding: 0.85rem 1.65rem; font-size: 1.0625rem; border-radius: 8px; }
+.lp-btn-lg::before { border-radius: 5px; }
+/* top-bar plate: smaller, and it never lifts */
+.lp-btn-nav { min-height: 2.5rem; padding: 0.45rem 1.05rem; font-size: 0.9rem; }
+.lp-btn-nav:hover { box-shadow: none; }
+.lp-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem;
+  border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ink-2); cursor: pointer;
+  transition: background 160ms, color 160ms, border-color 160ms;
+}
+.lp-iconbtn:hover { background: var(--surface); border-color: var(--line-2); color: var(--ink); }
+.lp-iconbtn:active { translate: 0 1px; }
 
 /* ---------- top bar ---------- */
 .lp-top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 1.5rem; padding: 0.75rem clamp(1rem, 4vw, 3rem); background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
@@ -277,5 +318,5 @@ html.review .results .bar-row .track i { width: var(--w); }
   .map-card { max-width: 200px; font-size: 0.8125rem; }
   .bar-row { grid-template-columns: 1fr; gap: 0.3rem; }
   .bar-row .mono { justify-self: end; }
-  .lp-top .lp-btn { padding: 0.5rem 0.8rem; }
+  .lp-top .lp-btn { padding: 0.45rem 0.85rem; }
 }

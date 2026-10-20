@@ -1,5 +1,5 @@
 /* Haulmind landing page: the living fleet map (Canvas), scroll-linked sequences, reveals,
-   count-ups, magnetic buttons, the pause toggle and the transition into the app.
+   count-ups, the pause toggle and the transition into the app.
    Everything here animates transform/opacity or a Canvas; nothing runs while off-screen,
    hidden, paused, or under reduced motion. */
 (function () {
@@ -409,17 +409,10 @@
   const lanes = $("#lanes");
   if (lanes) new IntersectionObserver((en) => lanes.classList.toggle("paused", !en[0].isIntersecting), { threshold: 0.1 }).observe(lanes);
 
-  /* ---------- magnetic buttons + light that follows the cursor ---------- */
+  /* ---------- light that follows the cursor across cards ---------- */
   if (hoverable) {
-    const magnets = $$(".lp-magnetic");
     document.addEventListener("pointermove", (e) => {
       if (reduced()) return;
-      magnets.forEach((b) => {
-        const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        const dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy);
-        if (d < 110) { b.style.transform = `translate(${(dx * 0.18).toFixed(1)}px, ${(dy * 0.18).toFixed(1)}px)`; }
-        else if (b.style.transform) { b.style.transform = ""; }
-      });
       const lit = e.target.closest ? e.target.closest(".lit") : null;
       if (lit) { const r = lit.getBoundingClientRect(); lit.style.setProperty("--mx", (e.clientX - r.left) + "px"); lit.style.setProperty("--my", (e.clientY - r.top) + "px"); }
     }, { passive: true });

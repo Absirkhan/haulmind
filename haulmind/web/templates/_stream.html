@@ -1,7 +1,6 @@
 {% if st %}
 {% set state = 'paused' if st.paused else ('done' if st.finished else ('lost' if st.stopped else 'live')) %}
 <div class="clock" data-run-state="{{ state }}" title="{{ st.sim_now|fulltime }}. {{ st.events_done }} of {{ st.events_total }} readings processed.">
-  <span class="live" id="live" data-state="{{ state }}"><span class="live-dot" aria-hidden="true"></span><span id="live-text">{% if st.paused %}Paused{% elif st.finished %}Day complete{% elif st.stopped %}Stopped{% else %}Live{% endif %}</span></span>
   <div>
     <div class="clock-time" aria-label="Fleet time {{ st.sim_now|clock }}">{{ st.sim_now|clock }}<small>{{ st.sim_now|dayname }} fleet time</small></div>
   </div>
@@ -10,6 +9,4 @@
     <div class="daystrip-labels"><span>12am</span><span>6</span><span>noon</span><span>6</span><span>12</span></div>
   </div>
 </div>
-{% else %}
-<div class="clock" data-run-state="lost"><span class="live" id="live" data-state="lost"><span class="live-dot" aria-hidden="true"></span><span id="live-text">Not connected</span></span></div>
 {% endif %}

@@ -85,6 +85,19 @@ templates.env.filters["fulltime"] = C.full_time
 templates.env.filters["say"] = C.humanize
 
 
+def _static_version() -> str:
+    """Query string that changes whenever a file under static/ changes, so a browser fetches the
+    updated stylesheet or script instead of serving a stale copy from its cache."""
+    try:
+        newest = max(p.stat().st_mtime for p in (BASE / "static").iterdir() if p.is_file())
+    except (OSError, ValueError):
+        return ""
+    return f"?v={int(newest)}"
+
+
+templates.env.globals["static_version"] = _static_version
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()

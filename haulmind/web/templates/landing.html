@@ -12,10 +12,11 @@
       try { if (JSON.parse(localStorage.getItem("anim-off"))) document.documentElement.classList.add("anim-off"); } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="/static/tokens.css">
-  <link rel="stylesheet" href="/static/landing.css">
-  <script src="/static/vehicles.js" defer></script>
-  <script src="/static/landing.js" defer></script>
+  {% set v = static_version() if static_version is defined else '' %}
+  <link rel="stylesheet" href="/static/tokens.css{{ v }}">
+  <link rel="stylesheet" href="/static/landing.css{{ v }}">
+  <script src="/static/vehicles.js{{ v }}" defer></script>
+  <script src="/static/landing.js{{ v }}" defer></script>
 </head>
 <body>
 {% macro icon(name, cls="icon") -%}
@@ -44,7 +45,7 @@
         <h1 id="hero-title" class="display" data-reveal-words>Every alert, looked into before you see it.</h1>
         <p class="lead">Haulmind watches the telematics feed from your trucks all night, checks what actually matters, and hands you a short list in the morning. Low-risk steps are already done. The rest waits for one tap.</p>
         <div class="hero-actions">
-          <a class="lp-btn lp-btn-primary lp-btn-lg lp-magnetic" href="/inbox" data-demo>Open the demo</a>
+          <a class="lp-btn lp-btn-primary lp-btn-lg" href="/inbox" data-demo>Open the demo</a>
           <a class="lp-btn lp-btn-quiet lp-btn-lg" href="#how">See how it works</a>
         </div>
         <p class="micro quiet">No sign-up. A seeded fleet of 25 trucks runs in your browser.</p>
@@ -185,10 +186,10 @@
   </section>
 
   <!-- ============ final cta ============ -->
-  <section class="cta" aria-labelledby="cta-title">
+  <section class="cta" id="cta" aria-labelledby="cta-title">
     <h2 id="cta-title" class="h-display">Open the inbox. The fleet is already running.</h2>
     <p class="lead">A seeded day of 25 trucks, 8 planted problems and 6 look-alikes. Approve, dismiss, and watch it learn.</p>
-    <a class="lp-btn lp-btn-primary lp-btn-lg lp-magnetic" href="/inbox" data-demo>Open the demo</a>
+    <a class="lp-btn lp-btn-primary lp-btn-lg" href="/inbox" data-demo>Open the demo</a>
   </section>
 </main>
 

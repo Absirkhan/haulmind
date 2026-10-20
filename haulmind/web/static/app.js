@@ -1,4 +1,4 @@
-/* Haulmind client behaviour: theme, live indicator, keyboard, command palette, toasts,
+/* Haulmind client behaviour: theme, keyboard, command palette, toasts,
    decisions with an undo window, local "not now" snoozing. No framework, no build step. */
 (function () {
   "use strict";
@@ -59,30 +59,6 @@
     return { remove, el };
   }
   window.haulmindToast = toast;
-
-  /* ---------- live indicator ---------- */
-  let lastOk = null;
-  function liveText() {
-    const t = $("#live-text"); if (!t) return;
-    if (lastOk === null) { t.textContent = "Connecting"; return; }
-    const s = Math.round((Date.now() - lastOk) / 1000);
-    t.textContent = s < 8 ? "Updated just now" : s < 60 ? `Updated ${s}s ago` : `Updated ${Math.round(s / 60)} min ago`;
-  }
-  setInterval(liveText, 4000);
-  document.body.addEventListener("htmx:afterRequest", (e) => {
-    const path = e.detail && e.detail.pathInfo ? e.detail.pathInfo.requestPath : "";
-    if (!path || !path.startsWith("/stream")) return;
-    const live = $("#live"); if (!live) return;
-    if (e.detail.successful) {
-      lastOk = Date.now();
-      const st = $("#stream [data-run-state]");
-      live.dataset.state = st ? st.dataset.runState : "live";
-      liveText();
-    } else {
-      live.dataset.state = "lost";
-      const t = $("#live-text"); if (t) t.textContent = "Connection lost, retrying";
-    }
-  });
 
   /* ---------- queue: enter animation, snoozes, selection ---------- */
   let knownIds = null;
@@ -285,10 +261,7 @@
   /* ---------- htmx error states ---------- */
   document.body.addEventListener("htmx:responseError", (e) => {
     const target = e.detail.target; if (!target) return;
-    if (target.id === "stream") return; // the live indicator already shows it
+    if (target.id === "stream") return; // the clock keeps its last reading and retries on its own
     target.innerHTML = '<div class="error-state" role="alert"><span>We couldn\'t load this. Check that Haulmind is still running.</span><button class="btn btn-sm" type="button" onclick="location.reload()">Try again</button></div>';
-  });
-  document.body.addEventListener("htmx:sendError", (e) => {
-    const live = $("#live"); if (live) { live.dataset.state = "lost"; const t = $("#live-text"); if (t) t.textContent = "Connection lost, retrying"; }
   });
 })();
